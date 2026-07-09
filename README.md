@@ -1,10 +1,10 @@
-# Retail Analytics Warehouse — SQL from Raw Data to Business Answers
+# Retail Analytics Warehouse - SQL from Raw Data to Business Answers
 
 ![SQL](https://img.shields.io/badge/SQL-DuckDB-yellow)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
-An end-to-end analytics project: generate a realistic multi-table retail dataset, **clean it**, model it into a **star schema**, and answer ten business questions in **pure SQL** — cohort retention, customer lifetime value, RFM segmentation, channel mix, revenue trends, and a data-quality audit. Built on **DuckDB** so the entire thing runs with zero database setup — clone it, run one command, and every query executes against a real warehouse.
+An end-to-end analytics project: generate a realistic multi-table retail dataset, **clean it**, model it into a **star schema**, and answer ten business questions in **pure SQL** - cohort retention, customer lifetime value, RFM segmentation, channel mix, revenue trends, and a data-quality audit. Built on **DuckDB** so the entire thing runs with zero database setup - clone it, run one command, and every query executes against a real warehouse.
 
 The focus is the two skills analytics and data-management interviews actually screen for: **writing non-trivial SQL** (window functions, cohort logic, ranked partitions) and **modeling messy operational data into a clean, queryable structure**.
 
@@ -15,13 +15,13 @@ python run_all.py          # generates data, builds the warehouse, runs every qu
 
 ## The data model
 
-Four raw operational tables (`customers`, `products`, `orders`, `order_items`) are cleaned and modeled into a star schema: one **fact table** at transaction grain surrounded by **conformed dimensions**. Analysts query this shape constantly because it makes time-based grouping, segmentation, and joins trivial — the date parsing and string cleaning happen *once*, at build time, not in every query.
+Four raw operational tables (`customers`, `products`, `orders`, `order_items`) are cleaned and modeled into a star schema: one **fact table** at transaction grain surrounded by **conformed dimensions**. Analysts query this shape constantly because it makes time-based grouping, segmentation, and joins trivial - the date parsing and string cleaning happen *once*, at build time, not in every query.
 
 ![Star schema](assets/star_schema.svg)
 
 The build step (`scripts/build_warehouse.py`) does real cleaning along the way:
 - **Inconsistent country values** (`  UNITED STATES  `, `united states`) → normalized to clean Title Case.
-- **Mixed date formats** — order dates arrive as both `YYYY-MM-DD` and `MM/DD/YYYY`; both are parsed via coalesced `TRY_STRPTIME` (0 unparseable after cleaning).
+- **Mixed date formats** - order dates arrive as both `YYYY-MM-DD` and `MM/DD/YYYY`; both are parsed via coalesced `TRY_STRPTIME` (0 unparseable after cleaning).
 - **A pre-computed date dimension** so no query re-parses dates.
 - **Money columns** (`net_revenue`, `gross_profit`) computed once in the fact table.
 
@@ -29,10 +29,10 @@ The build step (`scripts/build_warehouse.py`) does real cleaning along the way:
 
 A few headline results from the ten queries (full tables below, all reproducible):
 
-- **Revenue grew from ~$5K/month to ~$820K/month** over two years, with pronounced **Nov/Dec seasonal spikes** — the holiday bump is clearly visible.
-- **Electronics drives revenue** ($1.86M, ~53% of total) **and** carries the best gross margin (~41%), so it's both the biggest and one of the most profitable categories — not always the case.
+- **Revenue grew from ~$5K/month to ~$820K/month** over two years, with pronounced **Nov/Dec seasonal spikes** - the holiday bump is clearly visible.
+- **Electronics drives revenue** ($1.86M, ~53% of total) **and** carries the best gross margin (~41%), so it's both the biggest and one of the most profitable categories - not always the case.
 - **Returning customers make up ~50–65% of monthly revenue** in the mature months, a sign the business isn't running purely on new-customer acquisition.
-- **Cohort retention decays to ~15–30% by month 3** — typical for retail, and the kind of curve that anchors any retention conversation.
+- **Cohort retention decays to ~15–30% by month 3** - typical for retail, and the kind of curve that anchors any retention conversation.
 
 ![Revenue trend](assets/revenue_trend.png)
 
@@ -50,7 +50,7 @@ Each lives in `sql/` as a standalone, commented query. Question → what it demo
 *Window functions (`LAG`) over an ordered monthly aggregate.* Tracks the revenue trend and flags which months accelerated or slipped.
 
 ### 2. Revenue and margin by category
-*Dimensional slice + margin ratio.* Separates "big" categories from "profitable" ones — revenue and margin aren't the same thing.
+*Dimensional slice + margin ratio.* Separates "big" categories from "profitable" ones - revenue and margin aren't the same thing.
 
 | category | orders | units | net_revenue | gross_profit | margin_pct |
 |:--|--:|--:|--:|--:|--:|
@@ -65,7 +65,7 @@ Each lives in `sql/` as a standalone, commented query. Question → what it demo
 *Per-customer rollup + `CASE` segmentation + `RANK`.* Identifies the most valuable customers and how concentrated revenue is.
 
 ### 4. Cohort retention *(the flagship query)*
-*First-purchase cohorting, month-offset date differencing, and a conditional-aggregation pivot.* Of the customers who first ordered in a given month, what share returned 1/2/3 months later? This is the query that most separates real analysts from beginners — and the math is **verified by hand** against the raw data in the build notes.
+*First-purchase cohorting, month-offset date differencing, and a conditional-aggregation pivot.* Of the customers who first ordered in a given month, what share returned 1/2/3 months later? This is the query that most separates real analysts from beginners - and the math is **verified by hand** against the raw data in the build notes.
 
 | cohort_month | size | M0 | M1 | M2 | M3 |
 |:--|--:|--:|--:|--:|--:|
@@ -83,7 +83,7 @@ Each lives in `sql/` as a standalone, commented query. Question → what it demo
 *Windowed ratio-to-total (`SUM() OVER (PARTITION BY month)`).* Turns absolute channel revenue into share-of-month to reveal whether the Web/Mobile/In-Store mix is shifting.
 
 ### 7. New vs. returning revenue
-*First-order tagging + conditional aggregation.* Splits each month's revenue into new-customer vs. returning — a core growth-quality metric.
+*First-order tagging + conditional aggregation.* Splits each month's revenue into new-customer vs. returning - a core growth-quality metric.
 
 ### 8. Top 3 products per category
 *`RANK() OVER (PARTITION BY category)` then filter.* The "top-N-per-group" pattern that's awkward without window functions and clean with them.
@@ -92,7 +92,7 @@ Each lives in `sql/` as a standalone, commented query. Question → what it demo
 *Recency/Frequency/Monetary scored into quartiles with `NTILE`, combined into a targetable grade.* Turns raw transactions into a marketing segmentation scheme (Champions, Loyal, At-risk…).
 
 ### 10. Data-quality audit *(the data-management piece)*
-*A single `UNION ALL` health report: null rates, orphaned foreign keys, duplicate detection, range checks.* Signals data-governance maturity — the checks an analytics-engineering team runs continuously. It correctly catches the 85 missing emails and 8 duplicate customers intentionally seeded into the raw data.
+*A single `UNION ALL` health report: null rates, orphaned foreign keys, duplicate detection, range checks.* Signals data-governance maturity - the checks an analytics-engineering team runs continuously. It correctly catches the 85 missing emails and 8 duplicate customers intentionally seeded into the raw data.
 
 | check_name | failing_rows |
 |:--|--:|
@@ -137,7 +137,7 @@ You can also open `warehouse.duckdb` in any DuckDB client and run the `sql/` fil
 
 ## Notes and honest scope
 
-The dataset is **synthetically generated**, not scraped from a real company — this is deliberate: it lets the project ship with a reproducible, shareable dataset that has known-correct answers (so the cohort math can be verified) and controlled data-quality issues (so the cleaning and audit steps have something real to do). The generation logic builds in believable structure — time-varying acquisition, seasonality, heavy-tailed purchase frequency, category price bands — rather than uniform noise. The SQL techniques, schema design, and analyses are exactly what they'd be against real data; only the source is synthetic. Swapping in a real dataset (e.g., the UCI Online Retail set) would mean rewriting the loader in `build_warehouse.py` and leaving the `sql/` queries essentially unchanged.
+The dataset is **synthetically generated**, not scraped from a real company - this is deliberate: it lets the project ship with a reproducible, shareable dataset that has known-correct answers (so the cohort math can be verified) and controlled data-quality issues (so the cleaning and audit steps have something real to do). The generation logic builds in believable structure - time-varying acquisition, seasonality, heavy-tailed purchase frequency, category price bands - rather than uniform noise. The SQL techniques, schema design, and analyses are exactly what they'd be against real data; only the source is synthetic. Swapping in a real dataset (e.g., the UCI Online Retail set) would mean rewriting the loader in `build_warehouse.py` and leaving the `sql/` queries essentially unchanged.
 
 ## Development notes
 
@@ -145,6 +145,6 @@ Developed with AI-assisted coding. The schema design, the choice and constructio
 
 ## Author
 
-**Don Montilla** — B.S. Business Economics, UC San Diego · [LinkedIn](https://www.linkedin.com/in/donalfonso/)
+**Don Montilla** - B.S. Business Economics, UC San Diego · [LinkedIn](https://www.linkedin.com/in/donalfonso/)
 
 Licensed under the [MIT License](LICENSE).
