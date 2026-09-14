@@ -18,10 +18,9 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
-# resolve data/ relative to the repo root (parent of this script's folder)
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(REPO_ROOT, "data")
-os.makedirs(DATA_DIR, exist_ok=True)
+# everything lives in one folder next to this script
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = REPO_ROOT
 
 RNG = np.random.default_rng(42)
 START = datetime(2023, 1, 1)

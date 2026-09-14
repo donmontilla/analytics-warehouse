@@ -2,9 +2,9 @@
 Run every query in sql/ against the warehouse and print its result.
 
 Usage:
-    python scripts/run_queries.py            # run all, pretty-print
-    python scripts/run_queries.py --markdown # emit Markdown tables (for README)
-    python scripts/run_queries.py 04         # run only the file starting with '04'
+    python run_queries.py            # run all, pretty-print
+    python run_queries.py --markdown # emit Markdown tables (for README)
+    python run_queries.py 04         # run only the file starting with '04'
 
 Requires warehouse.duckdb (build it first: python scripts/build_warehouse.py).
 """
@@ -13,8 +13,8 @@ import sys
 import glob
 import duckdb
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SQL_DIR = os.path.join(REPO_ROOT, "sql")
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+SQL_DIR = REPO_ROOT
 DB_PATH = os.path.join(REPO_ROOT, "warehouse.duckdb")
 
 
@@ -33,10 +33,10 @@ def first_comment_line(sql_text):
 
 def run_all(filter_prefix=None, as_markdown=False):
     if not os.path.exists(DB_PATH):
-        sys.exit("warehouse.duckdb not found - run scripts/build_warehouse.py first.")
+        sys.exit("warehouse.duckdb not found - run build_warehouse.py first.")
 
     con = duckdb.connect(DB_PATH, read_only=True)
-    files = sorted(glob.glob(os.path.join(SQL_DIR, "*.sql")))
+    files = sorted(glob.glob(os.path.join(SQL_DIR, "[0-9][0-9]_*.sql")))
     if filter_prefix:
         files = [f for f in files if os.path.basename(f).startswith(filter_prefix)]
 

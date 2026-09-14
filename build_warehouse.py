@@ -11,14 +11,14 @@ painful (lots of ad-hoc joins and date parsing every time) and queries that are
 trivial (join fact to dimensions on clean keys). This mirrors how a real BI /
 analytics-engineering layer is built.
 
-Run:  python scripts/build_warehouse.py
-Output: warehouse.duckdb in the repo root.
+Run:  python build_warehouse.py
+Output: warehouse.duckdb alongside this script.
 """
 import os
 import duckdb
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(REPO_ROOT, "data")
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = REPO_ROOT
 DB_PATH = os.path.join(REPO_ROOT, "warehouse.duckdb")
 
 

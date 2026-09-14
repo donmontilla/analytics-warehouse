@@ -10,10 +10,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.join(REPO_ROOT, "warehouse.duckdb")
-ASSETS = os.path.join(REPO_ROOT, "assets")
-os.makedirs(ASSETS, exist_ok=True)
+ASSETS = REPO_ROOT
 
 plt.rcParams.update({
     "figure.dpi": 120, "axes.grid": True, "grid.alpha": 0.25,
@@ -112,7 +111,7 @@ ax.legend(frameon=False, ncol=3, loc="lower center")
 plt.tight_layout(); plt.savefig(os.path.join(ASSETS, "channel_mix.png")); plt.close()
 
 con.close()
-print("Wrote charts to assets/:")
+print("Wrote charts:")
 for f in sorted(os.listdir(ASSETS)):
     if f.endswith(".png"):
         print(" ", f)
