@@ -1,0 +1,121 @@
+product_id,product_name,category,unit_price,unit_cost
+1,SPO-0001,Sports & Outdoors,74.48,52.7
+2,SPO-0002,Sports & Outdoors,26.52,19.7
+3,SPO-0003,Sports & Outdoors,210.73,102.93
+4,APP-0004,Apparel,30.61,22.28
+5,APP-0005,Apparel,95.87,55.89
+6,HOM-0006,Home & Kitchen,79.0,37.06
+7,BOO-0007,Books,23.82,16.14
+8,HOM-0008,Home & Kitchen,274.79,197.28
+9,SPO-0009,Sports & Outdoors,35.83,21.14
+10,ELE-0010,Electronics,121.49,79.57
+11,SPO-0011,Sports & Outdoors,362.9,198.78
+12,HOM-0012,Home & Kitchen,61.23,31.03
+13,ELE-0013,Electronics,290.11,150.3
+14,SPO-0014,Sports & Outdoors,74.09,51.85
+15,SPO-0015,Sports & Outdoors,50.98,35.67
+16,BOO-0016,Books,15.62,8.38
+17,SPO-0017,Sports & Outdoors,30.4,15.5
+18,ELE-0018,Electronics,673.88,437.65
+19,SPO-0019,Sports & Outdoors,207.39,121.88
+20,APP-0020,Apparel,17.08,8.27
+21,SPO-0021,Sports & Outdoors,82.02,50.82
+22,SPO-0022,Sports & Outdoors,133.91,82.5
+23,APP-0023,Apparel,25.86,11.88
+24,APP-0024,Apparel,20.63,11.81
+25,BOO-0025,Books,11.98,5.6
+26,HOM-0026,Home & Kitchen,36.15,23.45
+27,APP-0027,Apparel,86.91,56.43
+28,APP-0028,Apparel,93.78,46.9
+29,ELE-0029,Electronics,102.09,68.06
+30,APP-0030,Apparel,18.03,10.82
+31,ELE-0031,Electronics,527.26,307.84
+32,HOM-0032,Home & Kitchen,37.01,23.65
+33,HOM-0033,Home & Kitchen,19.5,9.47
+34,BEA-0034,Beauty,95.61,63.09
+35,HOM-0035,Home & Kitchen,273.54,187.0
+36,SPO-0036,Sports & Outdoors,76.85,40.86
+37,ELE-0037,Electronics,921.79,540.84
+38,HOM-0038,Home & Kitchen,37.51,23.4
+39,ELE-0039,Electronics,813.85,551.43
+40,SPO-0040,Sports & Outdoors,72.98,46.58
+41,APP-0041,Apparel,61.94,29.44
+42,APP-0042,Apparel,13.33,7.97
+43,HOM-0043,Home & Kitchen,23.13,11.13
+44,APP-0044,Apparel,18.46,13.43
+45,APP-0045,Apparel,28.82,18.08
+46,ELE-0046,Electronics,1072.61,637.87
+47,SPO-0047,Sports & Outdoors,25.63,15.28
+48,APP-0048,Apparel,128.2,79.68
+49,APP-0049,Apparel,23.55,12.94
+50,APP-0050,Apparel,36.36,16.6
+51,BOO-0051,Books,37.61,18.51
+52,APP-0052,Apparel,15.79,10.29
+53,HOM-0053,Home & Kitchen,108.15,72.25
+54,SPO-0054,Sports & Outdoors,27.62,20.02
+55,HOM-0055,Home & Kitchen,16.78,10.34
+56,HOM-0056,Home & Kitchen,180.17,124.76
+57,HOM-0057,Home & Kitchen,260.52,139.97
+58,APP-0058,Apparel,22.91,16.74
+59,ELE-0059,Electronics,90.35,52.45
+60,BEA-0060,Beauty,91.68,61.85
+61,BOO-0061,Books,37.44,22.68
+62,HOM-0062,Home & Kitchen,151.53,98.27
+63,HOM-0063,Home & Kitchen,19.91,13.42
+64,HOM-0064,Home & Kitchen,248.26,129.66
+65,ELE-0065,Electronics,759.55,376.73
+66,ELE-0066,Electronics,405.53,288.89
+67,HOM-0067,Home & Kitchen,38.0,25.96
+68,BEA-0068,Beauty,34.7,17.11
+69,ELE-0069,Electronics,149.0,72.94
+70,SPO-0070,Sports & Outdoors,28.81,17.34
+71,SPO-0071,Sports & Outdoors,114.05,58.16
+72,BOO-0072,Books,27.53,18.49
+73,ELE-0073,Electronics,111.85,81.46
+74,HOM-0074,Home & Kitchen,36.95,22.04
+75,SPO-0075,Sports & Outdoors,350.21,187.69
+76,BEA-0076,Beauty,10.64,6.56
+77,APP-0077,Apparel,15.68,7.72
+78,APP-0078,Apparel,137.74,86.61
+79,BEA-0079,Beauty,73.8,43.56
+80,SPO-0080,Sports & Outdoors,21.1,10.19
+81,BOO-0081,Books,31.68,16.47
+82,APP-0082,Apparel,55.45,39.39
+83,APP-0083,Apparel,34.02,19.13
+84,APP-0084,Apparel,62.27,44.23
+85,APP-0085,Apparel,22.44,11.69
+86,SPO-0086,Sports & Outdoors,230.89,111.19
+87,ELE-0087,Electronics,400.13,197.6
+88,BOO-0088,Books,13.67,6.74
+89,BEA-0089,Beauty,15.09,8.08
+90,ELE-0090,Electronics,109.37,49.91
+91,ELE-0091,Electronics,128.38,59.83
+92,APP-0092,Apparel,66.97,38.04
+93,HOM-0093,Home & Kitchen,68.0,48.45
+94,BOO-0094,Books,8.62,4.35
+95,HOM-0095,Home & Kitchen,31.66,19.67
+96,APP-0096,Apparel,13.59,7.64
+97,APP-0097,Apparel,15.51,10.86
+98,ELE-0098,Electronics,979.01,469.66
+99,BOO-0099,Books,38.04,28.3
+100,BOO-0100,Books,30.75,19.76
+101,SPO-0101,Sports & Outdoors,29.93,18.28
+102,APP-0102,Apparel,104.68,61.64
+103,HOM-0103,Home & Kitchen,101.9,54.0
+104,ELE-0104,Electronics,291.82,167.82
+105,HOM-0105,Home & Kitchen,45.11,25.26
+106,HOM-0106,Home & Kitchen,46.75,30.66
+107,HOM-0107,Home & Kitchen,257.39,186.58
+108,APP-0108,Apparel,27.5,16.79
+109,BOO-0109,Books,24.7,17.08
+110,APP-0110,Apparel,59.35,31.84
+111,SPO-0111,Sports & Outdoors,36.67,24.14
+112,BOO-0112,Books,10.05,6.37
+113,ELE-0113,Electronics,570.95,271.4
+114,BEA-0114,Beauty,14.07,10.38
+115,BOO-0115,Books,22.31,15.28
+116,SPO-0116,Sports & Outdoors,340.28,178.99
+117,APP-0117,Apparel,15.26,9.69
+118,ELE-0118,Electronics,369.42,229.68
+119,APP-0119,Apparel,44.92,30.51
+120,SPO-0120,Sports & Outdoors,87.36,55.03

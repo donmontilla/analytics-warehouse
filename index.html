@@ -1,0 +1,772 @@
+<HTML>
+<HEAD>
+<TITLE>Retail Analytics Warehouse - ten questions a store would ask, answered in SQL</TITLE>
+<META http-equiv="Content-Type" content="text/html; charset=utf-8">
+<META name="description" content="A plain English walkthrough of a retail data warehouse: messy spreadsheets in, clean answers out. Pick a business question and see the result and the SQL behind it.">
+<META name="author" content="Don Montilla">
+<META name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- styles. same plain look as the DCF page -->
+<STYLE type="text/css">
+body { background-color: #FFFFFF; color: #000000;
+       font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 13px; margin: 0px; }
+td   { font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 13px; }
+a    { color: #0000EE; }
+a:visited { color: #551A8B; }
+h1   { font-family: Georgia, "Times New Roman", serif; font-size: 24px; color: #000080; margin: 0px 0px 6px 0px; }
+h2   { font-family: Georgia, "Times New Roman", serif; font-size: 18px; color: #000080; margin: 18px 0px 4px 0px; }
+h3   { font-size: 13px; margin: 0px 0px 3px 0px; }
+hr   { height: 1px; color: #999999; background-color: #999999; border: 0px; }
+.box { background-color: #F4F4F4; border: 1px solid #999999; }
+.note { color: #555555; font-size: 11px; }
+.tbl { border-collapse: collapse; }
+.tbl td, .tbl th { border: 1px solid #999999; padding: 5px 7px; text-align: left; vertical-align: top; }
+.tbl th { background-color: #E8E8E8; }
+.res td, .res th { font-size: 12px; white-space: nowrap; }
+.res th { background-color: #000080; color: #FFFFFF; }
+.res tr:nth-child(even) td { background-color: #F4F4F4; }
+pre.code { font-family: "Courier New", Courier, monospace; font-size: 12px; background-color: #F4F4F4;
+           border: 1px solid #999999; padding: 10px; overflow-x: auto; margin: 6px 0px 0px 0px; }
+select { font-family: Verdana, Arial; font-size: 13px; padding: 3px; border: 1px solid #999999; }
+.schema td.t { border: 1px solid #666666; background-color: #F4F4F4; padding: 0px; vertical-align: top; }
+.schema .h { background-color: #2874A6; color: #FFFFFF; font-weight: bold; padding: 4px 8px; }
+.schema .hf { background-color: #000080; color: #FFFFFF; font-weight: bold; padding: 4px 8px; }
+.schema .c { padding: 3px 8px; font-size: 12px; }
+.schema .fk { color: #800000; }
+img { max-width: 100%; height: auto; border: 1px solid #999999; }
+</STYLE>
+</HEAD>
+
+<BODY bgcolor="#FFFFFF" text="#000000" link="#0000EE" vlink="#551A8B">
+
+<!-- ================= header ================= -->
+<TABLE width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#000080">
+<TR><TD>
+  <TABLE width="780" border="0" cellpadding="8" cellspacing="0" align="center">
+  <TR>
+    <TD><FONT color="#FFFFFF"><B>Retail Analytics Warehouse</B></FONT></TD>
+    <TD align="right">
+      <FONT color="#FFFFFF" size="2">
+      <A href="#how" style="color:#FFFFFF">How it works</A> &nbsp;|&nbsp;
+      <A href="#questions" style="color:#FFFFFF">The questions</A> &nbsp;|&nbsp;
+      <A href="#words" style="color:#FFFFFF">Glossary</A> &nbsp;|&nbsp;
+      <A href="https://github.com/donmontilla/analytics-warehouse" style="color:#FFFFFF">Code on GitHub</A>
+      </FONT>
+    </TD>
+  </TR>
+  </TABLE>
+</TD></TR>
+</TABLE>
+
+<TABLE width="780" border="0" cellpadding="8" cellspacing="0" align="center">
+<TR><TD>
+
+<BR>
+<H1>A store has four messy spreadsheets. What can they actually tell you?</H1>
+<P>Customers, products, orders, and what was in each order. Two years of it, with the usual mess:
+dates typed two different ways, country names in the wrong case, a few duplicate accounts, some
+missing emails. This project cleans that up, organizes it into a shape that is easy to ask questions
+of, and answers ten questions a store manager would actually ask - in SQL, the language of databases.</P>
+<P>Pick a question below to see the answer, in plain English and in numbers, plus the query that produced it.</P>
+
+<!-- ================= the picker ================= -->
+<A name="questions"></A>
+<TABLE width="100%" border="0" cellpadding="12" cellspacing="0" class="box">
+<TR><TD>
+  <B>Pick a business question:</B><BR>
+  <SELECT id="picker" onchange="showQ(this.value)" style="width:100%; margin-top:4px">
+<OPTION value="01">01. How is revenue trending month to month?</OPTION>
+<OPTION value="02">02. Which product categories make the money, and which are actually profitable?</OPTION>
+<OPTION value="03">03. Who are the best customers?</OPTION>
+<OPTION value="04">04. Do customers come back?</OPTION>
+<OPTION value="05">05. What does one loyal customer's history look like?</OPTION>
+<OPTION value="06">06. Which sales channel matters most?</OPTION>
+<OPTION value="07">07. Is growth coming from new customers or repeat customers?</OPTION>
+<OPTION value="08">08. What sells best in each category?</OPTION>
+<OPTION value="09">09. Which customers should marketing target first?</OPTION>
+<OPTION value="10">10. Can we trust the data?</OPTION>
+  </SELECT>
+  <BR><BR>
+  <A href="javascript:prevQ()">&laquo; previous</A> &nbsp;|&nbsp; <A href="javascript:nextQ()">next &raquo;</A>
+</TD></TR>
+</TABLE>
+<BR>
+
+
+<DIV id="q01" class="qblock" style="display:none">
+  <H2 style="margin-top:0px">01. How is revenue trending month to month?</H2>
+  <P><B>What the query does:</B> Total sales each month, and how much they rose or fell versus the month before.</P>
+  <TABLE width="100%" border="0" cellpadding="10" cellspacing="0" class="box"><TR><TD>
+  <B>What it tells you:</B> Revenue climbed from about $5,000 a month in early 2023 to $822,000 by December 2024. The big jumps in November (+97%) and December are the holiday season. The wild percentage swings in the first few months are just noise - a couple of orders either way when the store barely had any customers.
+  </TD></TR></TABLE>
+  <BR>
+  <B>Result</B> <FONT class="note">(straight from the warehouse, 23 rows)</FONT><BR>
+  <DIV style="overflow-x:auto"><TABLE class="tbl res" cellpadding="4" cellspacing="0"><TR><TH>year_month</TH><TH>revenue</TH><TH>prev_month_revenue</TH><TH>mom_growth_pct</TH></TR><TR><TD>2023-02</TD><TD align="right">$5,141</TD><TD align="right"></TD><TD align="right"></TD></TR><TR><TD>2023-03</TD><TD align="right">$150</TD><TD align="right">$5,141</TD><TD align="right">-97.1%</TD></TR><TR><TD>2023-04</TD><TD align="right">$4,587</TD><TD align="right">$150</TD><TD align="right">2963.1%</TD></TR><TR><TD>2023-05</TD><TD align="right">$8,131</TD><TD align="right">$4,587</TD><TD align="right">77.3%</TD></TR><TR><TD>2023-06</TD><TD align="right">$12,314</TD><TD align="right">$8,131</TD><TD align="right">51.4%</TD></TR><TR><TD>2023-07</TD><TD align="right">$21,278</TD><TD align="right">$12,314</TD><TD align="right">72.8%</TD></TR><TR><TD>2023-08</TD><TD align="right">$32,180</TD><TD align="right">$21,278</TD><TD align="right">51.2%</TD></TR><TR><TD>2023-09</TD><TD align="right">$34,653</TD><TD align="right">$32,180</TD><TD align="right">7.7%</TD></TR><TR><TD>2023-10</TD><TD align="right">$53,711</TD><TD align="right">$34,653</TD><TD align="right">55.0%</TD></TR><TR><TD>2023-11</TD><TD align="right">$92,063</TD><TD align="right">$53,711</TD><TD align="right">71.4%</TD></TR><TR><TD>2023-12</TD><TD align="right">$123,062</TD><TD align="right">$92,063</TD><TD align="right">33.7%</TD></TR><TR><TD>2024-01</TD><TD align="right">$62,037</TD><TD align="right">$123,062</TD><TD align="right">-49.6%</TD></TR><TR><TD>2024-02</TD><TD align="right">$94,247</TD><TD align="right">$62,037</TD><TD align="right">51.9%</TD></TR><TR><TD>2024-03</TD><TD align="right">$103,705</TD><TD align="right">$94,247</TD><TD align="right">10.0%</TD></TR><TR><TD>2024-04</TD><TD align="right">$150,694</TD><TD align="right">$103,705</TD><TD align="right">45.3%</TD></TR><TR><TD>2024-05</TD><TD align="right">$130,122</TD><TD align="right">$150,694</TD><TD align="right">-13.7%</TD></TR><TR><TD>2024-06</TD><TD align="right">$153,126</TD><TD align="right">$130,122</TD><TD align="right">17.7%</TD></TR><TR><TD>2024-07</TD><TD align="right">$146,079</TD><TD align="right">$153,126</TD><TD align="right">-4.6%</TD></TR><TR><TD>2024-08</TD><TD align="right">$232,941</TD><TD align="right">$146,079</TD><TD align="right">59.5%</TD></TR><TR><TD>2024-09</TD><TD align="right">$231,101</TD><TD align="right">$232,941</TD><TD align="right">-0.8%</TD></TR><TR><TD>2024-10</TD><TD align="right">$327,453</TD><TD align="right">$231,101</TD><TD align="right">41.7%</TD></TR><TR><TD>2024-11</TD><TD align="right">$645,182</TD><TD align="right">$327,453</TD><TD align="right">97.0%</TD></TR><TR><TD>2024-12</TD><TD align="right">$822,506</TD><TD align="right">$645,182</TD><TD align="right">27.5%</TD></TR></TABLE></DIV>
+  <BR>
+  <A href="javascript:toggleSql('01')" id="sqllink01">+ Show the SQL that produced this</A>
+  <DIV id="sql01" style="display:none">
+  <PRE class="code">-- Q1: Monthly net revenue with month-over-month growth.
+-- Business question: how is revenue trending, and which months accelerated or slid?
+-- Technique: aggregate to month via the date dimension, then LAG() for the prior
+-- month plus a window-based percent change. Demonstrates window functions layered
+-- on top of an ordered aggregate.
+WITH monthly AS (
+    SELECT
+        d.year_month,
+        SUM(f.net_revenue) AS revenue
+    FROM fact_order_items f
+    JOIN dim_date d ON f.order_date = d.date
+    GROUP BY d.year_month
+)
+SELECT
+    year_month,
+    revenue,
+    LAG(revenue) OVER (ORDER BY year_month) AS prev_month_revenue,
+    ROUND(
+        100.0 * (revenue - LAG(revenue) OVER (ORDER BY year_month))
+        / NULLIF(LAG(revenue) OVER (ORDER BY year_month), 0), 1
+    ) AS mom_growth_pct
+FROM monthly
+ORDER BY year_month;</PRE>
+  </DIV>
+</DIV>
+
+<DIV id="q02" class="qblock" style="display:none">
+  <H2 style="margin-top:0px">02. Which product categories make the money, and which are actually profitable?</H2>
+  <P><B>What the query does:</B> Sales, profit and profit margin for each of the six categories.</P>
+  <TABLE width="100%" border="0" cellpadding="10" cellspacing="0" class="box"><TR><TD>
+  <B>What it tells you:</B> Electronics brings in $1.86 million, more than half of all revenue, and keeps 41 cents of every dollar as gross profit - second only to Sports &amp; Outdoors at 42 cents. Apparel sells the most individual items (7,064) but earns about a sixth of what Electronics does. Being big and being profitable are different things, and here one category happens to be both.
+  </TD></TR></TABLE>
+  <BR>
+  <B>Result</B> <FONT class="note">(straight from the warehouse, 6 rows)</FONT><BR>
+  <DIV style="overflow-x:auto"><TABLE class="tbl res" cellpadding="4" cellspacing="0"><TR><TH>category</TH><TH>orders</TH><TH>units_sold</TH><TH>net_revenue</TH><TH>gross_profit</TH><TH>margin_pct</TH></TR><TR><TD>Electronics</TD><TD align="right">1435</TD><TD align="right">4,425</TD><TD align="right">$1,858,774</TD><TD align="right">$763,586</TD><TD align="right">41.1%</TD></TR><TR><TD>Sports &amp; Outdoors</TD><TD align="right">1712</TD><TD align="right">5,523</TD><TD align="right">$600,017</TD><TD align="right">$252,704</TD><TD align="right">42.1%</TD></TR><TR><TD>Home &amp; Kitchen</TD><TD align="right">1729</TD><TD align="right">5,511</TD><TD align="right">$556,641</TD><TD align="right">$195,396</TD><TD align="right">35.1%</TD></TR><TR><TD>Apparel</TD><TD align="right">2033</TD><TD align="right">7,064</TD><TD align="right">$324,269</TD><TD align="right">$124,969</TD><TD align="right">38.5%</TD></TR><TR><TD>Beauty</TD><TD align="right">612</TD><TD align="right">1,617</TD><TD align="right">$74,530</TD><TD align="right">$26,574</TD><TD align="right">35.7%</TD></TR><TR><TD>Books</TD><TD align="right">1107</TD><TD align="right">3,128</TD><TD align="right">$72,231</TD><TD align="right">$27,061</TD><TD align="right">37.5%</TD></TR></TABLE></DIV>
+  <BR>
+  <A href="javascript:toggleSql('02')" id="sqllink02">+ Show the SQL that produced this</A>
+  <DIV id="sql02" style="display:none">
+  <PRE class="code">-- Q2: Revenue, gross profit, and margin % by product category.
+-- Business question: which categories drive revenue, and which are actually
+-- profitable (high revenue and high margin aren&#x27;t the same thing)?
+-- Technique: join fact to the product dimension, aggregate, and compute a
+-- margin ratio. Classic dimensional slice.
+SELECT
+    p.category,
+    COUNT(DISTINCT f.order_id)                           AS orders,
+    SUM(f.quantity)                                      AS units_sold,
+    ROUND(SUM(f.net_revenue), 2)                         AS net_revenue,
+    ROUND(SUM(f.gross_profit), 2)                        AS gross_profit,
+    ROUND(100.0 * SUM(f.gross_profit)
+                / NULLIF(SUM(f.net_revenue), 0), 1)      AS margin_pct
+FROM fact_order_items f
+JOIN dim_product p ON f.product_id = p.product_id
+GROUP BY p.category
+ORDER BY net_revenue DESC;</PRE>
+  </DIV>
+</DIV>
+
+<DIV id="q03" class="qblock" style="display:none">
+  <H2 style="margin-top:0px">03. Who are the best customers?</H2>
+  <P><B>What the query does:</B> The fifteen customers who have spent the most, ranked, with a label for how valuable they are.</P>
+  <TABLE width="100%" border="0" cellpadding="10" cellspacing="0" class="box"><TR><TD>
+  <B>What it tells you:</B> The top customer has spent $21,690 across 9 orders. Everyone on this list is tagged High-value (over $5,000 lifetime). A quirk worth noticing: the United Kingdom and Japan show up here more often than their share of the customer base would suggest.
+  </TD></TR></TABLE>
+  <BR>
+  <B>Result</B> <FONT class="note">(straight from the warehouse, 15 rows)</FONT><BR>
+  <DIV style="overflow-x:auto"><TABLE class="tbl res" cellpadding="4" cellspacing="0"><TR><TH>customer_id</TH><TH>country</TH><TH>orders</TH><TH>lifetime_value</TH><TH>segment</TH><TH>ltv_rank</TH></TR><TR><TD align="right">1640</TD><TD>United States</TD><TD align="right">9</TD><TD align="right">$21,690</TD><TD>High-value</TD><TD align="right">1</TD></TR><TR><TD align="right">732</TD><TD>United Kingdom</TD><TD align="right">13</TD><TD align="right">$18,430</TD><TD>High-value</TD><TD align="right">2</TD></TR><TR><TD align="right">1813</TD><TD>United Kingdom</TD><TD align="right">12</TD><TD align="right">$18,340</TD><TD>High-value</TD><TD align="right">3</TD></TR><TR><TD align="right">191</TD><TD>Japan</TD><TD align="right">19</TD><TD align="right">$18,285</TD><TD>High-value</TD><TD align="right">4</TD></TR><TR><TD align="right">215</TD><TD>United Kingdom</TD><TD align="right">20</TD><TD align="right">$17,195</TD><TD>High-value</TD><TD align="right">5</TD></TR><TR><TD align="right">1338</TD><TD>Germany</TD><TD align="right">13</TD><TD align="right">$16,558</TD><TD>High-value</TD><TD align="right">6</TD></TR><TR><TD align="right">1470</TD><TD>United States</TD><TD align="right">12</TD><TD align="right">$16,166</TD><TD>High-value</TD><TD align="right">7</TD></TR><TR><TD align="right">1227</TD><TD>Japan</TD><TD align="right">12</TD><TD align="right">$14,933</TD><TD>High-value</TD><TD align="right">8</TD></TR><TR><TD align="right">647</TD><TD>United States</TD><TD align="right">13</TD><TD align="right">$13,186</TD><TD>High-value</TD><TD align="right">9</TD></TR><TR><TD align="right">915</TD><TD>United States</TD><TD align="right">5</TD><TD align="right">$12,693</TD><TD>High-value</TD><TD align="right">10</TD></TR><TR><TD align="right">722</TD><TD>Germany</TD><TD align="right">8</TD><TD align="right">$12,250</TD><TD>High-value</TD><TD align="right">11</TD></TR><TR><TD align="right">1320</TD><TD>United Kingdom</TD><TD align="right">11</TD><TD align="right">$12,225</TD><TD>High-value</TD><TD align="right">12</TD></TR><TR><TD align="right">1555</TD><TD>Canada</TD><TD align="right">7</TD><TD align="right">$11,982</TD><TD>High-value</TD><TD align="right">13</TD></TR><TR><TD align="right">1053</TD><TD>United States</TD><TD align="right">9</TD><TD align="right">$11,843</TD><TD>High-value</TD><TD align="right">14</TD></TR><TR><TD align="right">1612</TD><TD>Germany</TD><TD align="right">7</TD><TD align="right">$11,841</TD><TD>High-value</TD><TD align="right">15</TD></TR></TABLE></DIV>
+  <BR>
+  <A href="javascript:toggleSql('03')" id="sqllink03">+ Show the SQL that produced this</A>
+  <DIV id="sql03" style="display:none">
+  <PRE class="code">-- Q3: Top customers by lifetime value, tagged with a value segment.
+-- Business question: who are the most valuable customers, and how concentrated
+-- is revenue among them?
+-- Technique: aggregate per customer, then use CASE to bucket them, and RANK.
+-- Shows customer-level rollups plus segmentation logic in SQL.
+WITH customer_value AS (
+    SELECT
+        f.customer_id,
+        COUNT(DISTINCT f.order_id)          AS orders,
+        ROUND(SUM(f.net_revenue), 2)        AS lifetime_value,
+        ROUND(AVG(f.net_revenue), 2)        AS avg_line_value
+    FROM fact_order_items f
+    GROUP BY f.customer_id
+)
+SELECT
+    cv.customer_id,
+    c.country,
+    cv.orders,
+    cv.lifetime_value,
+    CASE
+        WHEN cv.lifetime_value &gt;= 5000 THEN &#x27;High-value&#x27;
+        WHEN cv.lifetime_value &gt;= 1500 THEN &#x27;Mid-value&#x27;
+        WHEN cv.orders = 1            THEN &#x27;One-time&#x27;
+        ELSE &#x27;Low-value&#x27;
+    END                                     AS segment,
+    RANK() OVER (ORDER BY cv.lifetime_value DESC) AS ltv_rank
+FROM customer_value cv
+JOIN dim_customer c ON cv.customer_id = c.customer_id
+ORDER BY cv.lifetime_value DESC
+LIMIT 15;</PRE>
+  </DIV>
+</DIV>
+
+<DIV id="q04" class="qblock" style="display:none">
+  <H2 style="margin-top:0px">04. Do customers come back?</H2>
+  <P><B>What the query does:</B> For customers who made their first purchase in a given month, what share bought again one, two and three months later.</P>
+  <TABLE width="100%" border="0" cellpadding="10" cellspacing="0" class="box"><TR><TD>
+  <B>What it tells you:</B> Take everyone whose first order was in September 2023: 16% bought again the next month, and 34% had returned by month three. That is the shape of most retail - the majority buy once, a loyal minority keeps coming back. This is the query most likely to get probed in an interview, so the numbers were checked by hand against the raw records.
+  </TD></TR></TABLE>
+  <BR>
+  <B>Result</B> <FONT class="note">(straight from the warehouse, 12 rows)</FONT><BR>
+  <DIV style="overflow-x:auto"><TABLE class="tbl res" cellpadding="4" cellspacing="0"><TR><TH>cohort_month</TH><TH>cohort_size</TH><TH>m0</TH><TH>m1</TH><TH>m2</TH><TH>m3</TH></TR><TR><TD>2023-02</TD><TD align="right">2</TD><TD align="right">100%</TD><TD align="right">0%</TD><TD align="right">50%</TD><TD align="right">50%</TD></TR><TR><TD>2023-03</TD><TD align="right">1</TD><TD align="right">100%</TD><TD align="right">0%</TD><TD align="right">0%</TD><TD align="right">0%</TD></TR><TR><TD>2023-04</TD><TD align="right">7</TD><TD align="right">100%</TD><TD align="right">14%</TD><TD align="right">0%</TD><TD align="right">14%</TD></TR><TR><TD>2023-05</TD><TD align="right">11</TD><TD align="right">100%</TD><TD align="right">18%</TD><TD align="right">18%</TD><TD align="right">18%</TD></TR><TR><TD>2023-06</TD><TD align="right">12</TD><TD align="right">100%</TD><TD align="right">0%</TD><TD align="right">8%</TD><TD align="right">0%</TD></TR><TR><TD>2023-07</TD><TD align="right">23</TD><TD align="right">100%</TD><TD align="right">13%</TD><TD align="right">13%</TD><TD align="right">17%</TD></TR><TR><TD>2023-08</TD><TD align="right">28</TD><TD align="right">100%</TD><TD align="right">7%</TD><TD align="right">14%</TD><TD align="right">32%</TD></TR><TR><TD>2023-09</TD><TD align="right">32</TD><TD align="right">100%</TD><TD align="right">16%</TD><TD align="right">19%</TD><TD align="right">34%</TD></TR><TR><TD>2023-10</TD><TD align="right">40</TD><TD align="right">100%</TD><TD align="right">15%</TD><TD align="right">18%</TD><TD align="right">10%</TD></TR><TR><TD>2023-11</TD><TD align="right">40</TD><TD align="right">100%</TD><TD align="right">23%</TD><TD align="right">13%</TD><TD align="right">13%</TD></TR><TR><TD>2023-12</TD><TD align="right">68</TD><TD align="right">100%</TD><TD align="right">7%</TD><TD align="right">10%</TD><TD align="right">15%</TD></TR><TR><TD>2024-01</TD><TD align="right">44</TD><TD align="right">100%</TD><TD align="right">5%</TD><TD align="right">23%</TD><TD align="right">16%</TD></TR></TABLE></DIV>
+  <BR>
+  <A href="javascript:toggleSql('04')" id="sqllink04">+ Show the SQL that produced this</A>
+  <DIV id="sql04" style="display:none">
+  <PRE class="code">-- Q4: Monthly cohort retention (the flagship analysis).
+-- Business question: of the customers who first ordered in a given month, what
+-- share came back to order again 1, 2, 3... months later?
+-- Technique: assign each customer to a cohort (their first-order month), compute
+-- the month-offset of every subsequent order, count distinct returning customers
+-- per (cohort, offset), and express as a % of the cohort&#x27;s starting size.
+-- This is the query that separates real analysts from beginners: it needs a
+-- self-referencing first-purchase calculation, date differencing, and a pivot.
+WITH first_order AS (
+    SELECT
+        customer_id,
+        DATE_TRUNC(&#x27;month&#x27;, MIN(order_date)) AS cohort_month
+    FROM fact_order_items
+    GROUP BY customer_id
+),
+activity AS (
+    SELECT DISTINCT
+        f.customer_id,
+        fo.cohort_month,
+        DATE_TRUNC(&#x27;month&#x27;, f.order_date) AS activity_month,
+        DATEDIFF(&#x27;month&#x27;, fo.cohort_month,
+                 DATE_TRUNC(&#x27;month&#x27;, f.order_date)) AS month_offset
+    FROM fact_order_items f
+    JOIN first_order fo ON f.customer_id = fo.customer_id
+),
+cohort_size AS (
+    SELECT cohort_month, COUNT(*) AS n_customers
+    FROM first_order
+    GROUP BY cohort_month
+)
+SELECT
+    a.cohort_month,
+    cs.n_customers                                          AS cohort_size,
+    ROUND(100.0 * COUNT(DISTINCT CASE WHEN a.month_offset = 0 THEN a.customer_id END)
+                / cs.n_customers, 0)                        AS m0,
+    ROUND(100.0 * COUNT(DISTINCT CASE WHEN a.month_offset = 1 THEN a.customer_id END)
+                / cs.n_customers, 0)                        AS m1,
+    ROUND(100.0 * COUNT(DISTINCT CASE WHEN a.month_offset = 2 THEN a.customer_id END)
+                / cs.n_customers, 0)                        AS m2,
+    ROUND(100.0 * COUNT(DISTINCT CASE WHEN a.month_offset = 3 THEN a.customer_id END)
+                / cs.n_customers, 0)                        AS m3
+FROM activity a
+JOIN cohort_size cs ON a.cohort_month = cs.cohort_month
+GROUP BY a.cohort_month, cs.n_customers
+ORDER BY a.cohort_month
+LIMIT 12;</PRE>
+  </DIV>
+</DIV>
+
+<DIV id="q05" class="qblock" style="display:none">
+  <H2 style="margin-top:0px">05. What does one loyal customer's history look like?</H2>
+  <P><B>What the query does:</B> Every order from the single most frequent buyer, with a running total and the gap in days since their previous order.</P>
+  <TABLE width="100%" border="0" cellpadding="10" cellspacing="0" class="box"><TR><TD>
+  <B>What it tells you:</B> Customer 215 placed 20 orders in ten months, spending $17,195 in total. The gaps between orders range from 2 days to 41 days. Watching one customer this way is how you spot someone drifting away - the gaps get longer - before they disappear entirely.
+  </TD></TR></TABLE>
+  <BR>
+  <B>Result</B> <FONT class="note">(straight from the warehouse, 20 rows)</FONT><BR>
+  <DIV style="overflow-x:auto"><TABLE class="tbl res" cellpadding="4" cellspacing="0"><TR><TH>customer_id</TH><TH>order_id</TH><TH>order_date</TH><TH>order_revenue</TH><TH>order_seq</TH><TH>running_spend</TH><TH>days_since_prev_order</TH></TR><TR><TD align="right">215</TD><TD align="right">446</TD><TD>2024-02-26</TD><TD align="right">$522</TD><TD align="right">1</TD><TD align="right">$522</TD><TD></TD></TR><TR><TD align="right">215</TD><TD align="right">444</TD><TD>2024-03-02</TD><TD align="right">$3,125</TD><TD align="right">2</TD><TD align="right">$3,647</TD><TD align="right">5</TD></TR><TR><TD align="right">215</TD><TD align="right">448</TD><TD>2024-03-04</TD><TD align="right">$1,844</TD><TD align="right">3</TD><TD align="right">$5,491</TD><TD align="right">2</TD></TR><TR><TD align="right">215</TD><TD align="right">452</TD><TD>2024-03-10</TD><TD align="right">$283</TD><TD align="right">4</TD><TD align="right">$5,774</TD><TD align="right">6</TD></TR><TR><TD align="right">215</TD><TD align="right">455</TD><TD>2024-03-14</TD><TD align="right">$122</TD><TD align="right">5</TD><TD align="right">$5,896</TD><TD align="right">4</TD></TR><TR><TD align="right">215</TD><TD align="right">447</TD><TD>2024-04-15</TD><TD align="right">$51</TD><TD align="right">6</TD><TD align="right">$5,947</TD><TD align="right">32</TD></TR><TR><TD align="right">215</TD><TD align="right">457</TD><TD>2024-05-13</TD><TD align="right">$261</TD><TD align="right">7</TD><TD align="right">$6,208</TD><TD align="right">28</TD></TR><TR><TD align="right">215</TD><TD align="right">449</TD><TD>2024-05-21</TD><TD align="right">$982</TD><TD align="right">8</TD><TD align="right">$7,189</TD><TD align="right">8</TD></TR><TR><TD align="right">215</TD><TD align="right">456</TD><TD>2024-05-30</TD><TD align="right">$53</TD><TD align="right">9</TD><TD align="right">$7,242</TD><TD align="right">9</TD></TR><TR><TD align="right">215</TD><TD align="right">451</TD><TD>2024-06-07</TD><TD align="right">$135</TD><TD align="right">10</TD><TD align="right">$7,377</TD><TD align="right">8</TD></TR><TR><TD align="right">215</TD><TD align="right">450</TD><TD>2024-07-09</TD><TD align="right">$98</TD><TD align="right">11</TD><TD align="right">$7,475</TD><TD align="right">32</TD></TR><TR><TD align="right">215</TD><TD align="right">445</TD><TD>2024-07-14</TD><TD align="right">$272</TD><TD align="right">12</TD><TD align="right">$7,747</TD><TD align="right">5</TD></TR><TR><TD align="right">215</TD><TD align="right">443</TD><TD>2024-07-31</TD><TD align="right">$1,940</TD><TD align="right">13</TD><TD align="right">$9,686</TD><TD align="right">17</TD></TR><TR><TD align="right">215</TD><TD align="right">462</TD><TD>2024-08-31</TD><TD align="right">$529</TD><TD align="right">14</TD><TD align="right">$10,215</TD><TD align="right">31</TD></TR><TR><TD align="right">215</TD><TD align="right">461</TD><TD>2024-09-05</TD><TD align="right">$2,476</TD><TD align="right">15</TD><TD align="right">$12,692</TD><TD align="right">5</TD></TR><TR><TD align="right">215</TD><TD align="right">458</TD><TD>2024-09-27</TD><TD align="right">$3,174</TD><TD align="right">16</TD><TD align="right">$15,866</TD><TD align="right">22</TD></TR><TR><TD align="right">215</TD><TD align="right">453</TD><TD>2024-10-05</TD><TD align="right">$24</TD><TD align="right">17</TD><TD align="right">$15,890</TD><TD align="right">8</TD></TR><TR><TD align="right">215</TD><TD align="right">459</TD><TD>2024-11-13</TD><TD align="right">$108</TD><TD align="right">18</TD><TD align="right">$15,998</TD><TD align="right">39</TD></TR><TR><TD align="right">215</TD><TD align="right">454</TD><TD>2024-11-19</TD><TD align="right">$900</TD><TD align="right">19</TD><TD align="right">$16,898</TD><TD align="right">6</TD></TR><TR><TD align="right">215</TD><TD align="right">460</TD><TD>2024-12-30</TD><TD align="right">$298</TD><TD align="right">20</TD><TD align="right">$17,195</TD><TD align="right">41</TD></TR></TABLE></DIV>
+  <BR>
+  <A href="javascript:toggleSql('05')" id="sqllink05">+ Show the SQL that produced this</A>
+  <DIV id="sql05" style="display:none">
+  <PRE class="code">-- Q5: Per-customer purchase sequence - running spend and days between orders.
+-- Business question: how do individual customers behave over time - are gaps
+-- between purchases widening (disengaging) or tightening (habitual)?
+-- Technique: window functions partitioned by customer and ordered by date:
+-- a running SUM for cumulative spend and LAG on the date to get the gap between
+-- consecutive orders. This is the canonical &quot;window functions&quot; showcase.
+WITH order_level AS (
+    -- collapse line items to one row per order first
+    SELECT
+        customer_id,
+        order_id,
+        order_date,
+        SUM(net_revenue) AS order_revenue
+    FROM fact_order_items
+    GROUP BY customer_id, order_id, order_date
+)
+SELECT
+    customer_id,
+    order_id,
+    order_date,
+    order_revenue,
+    ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id)
+        AS order_seq,
+    SUM(order_revenue) OVER (
+        PARTITION BY customer_id ORDER BY order_date, order_id
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS running_spend,
+    DATEDIFF(&#x27;day&#x27;,
+        LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date, order_id),
+        order_date
+    ) AS days_since_prev_order
+FROM order_level
+-- show a single illustrative repeat customer so the sequence is readable
+WHERE customer_id = (
+    SELECT customer_id
+    FROM order_level
+    GROUP BY customer_id
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+)
+ORDER BY order_seq;</PRE>
+  </DIV>
+</DIV>
+
+<DIV id="q06" class="qblock" style="display:none">
+  <H2 style="margin-top:0px">06. Which sales channel matters most?</H2>
+  <P><B>What the query does:</B> Each month's revenue split between Web, Mobile and In-Store, as a share of that month.</P>
+  <TABLE width="100%" border="0" cellpadding="10" cellspacing="0" class="box"><TR><TD>
+  <B>What it tells you:</B> Once the store has real volume, Web takes roughly half to 60% of each month, Mobile around a quarter to 40%, and In-Store the remaining 10-15%. The 100% months at the top are single orders, so ignore them.
+  </TD></TR></TABLE>
+  <BR>
+  <B>Result</B> <FONT class="note">(straight from the warehouse, 18 rows)</FONT><BR>
+  <DIV style="overflow-x:auto"><TABLE class="tbl res" cellpadding="4" cellspacing="0"><TR><TH>year_month</TH><TH>channel</TH><TH>channel_revenue</TH><TH>pct_of_month</TH></TR><TR><TD>2023-02</TD><TD>Mobile</TD><TD align="right">$5,141</TD><TD align="right">100.0%</TD></TR><TR><TD>2023-03</TD><TD>Mobile</TD><TD align="right">$150</TD><TD align="right">100.0%</TD></TR><TR><TD>2023-04</TD><TD>Mobile</TD><TD align="right">$2,458</TD><TD align="right">53.6%</TD></TR><TR><TD>2023-04</TD><TD>Web</TD><TD align="right">$2,129</TD><TD align="right">46.4%</TD></TR><TR><TD>2023-05</TD><TD>Web</TD><TD align="right">$3,729</TD><TD align="right">45.9%</TD></TR><TR><TD>2023-05</TD><TD>Mobile</TD><TD align="right">$2,333</TD><TD align="right">28.7%</TD></TR><TR><TD>2023-05</TD><TD>In-Store</TD><TD align="right">$2,069</TD><TD align="right">25.4%</TD></TR><TR><TD>2023-06</TD><TD>Web</TD><TD align="right">$9,768</TD><TD align="right">79.3%</TD></TR><TR><TD>2023-06</TD><TD>In-Store</TD><TD align="right">$1,945</TD><TD align="right">15.8%</TD></TR><TR><TD>2023-06</TD><TD>Mobile</TD><TD align="right">$601</TD><TD align="right">4.9%</TD></TR><TR><TD>2023-07</TD><TD>Mobile</TD><TD align="right">$10,487</TD><TD align="right">49.3%</TD></TR><TR><TD>2023-07</TD><TD>Web</TD><TD align="right">$7,379</TD><TD align="right">34.7%</TD></TR><TR><TD>2023-07</TD><TD>In-Store</TD><TD align="right">$3,412</TD><TD align="right">16.0%</TD></TR><TR><TD>2023-08</TD><TD>Web</TD><TD align="right">$15,574</TD><TD align="right">48.4%</TD></TR><TR><TD>2023-08</TD><TD>Mobile</TD><TD align="right">$13,730</TD><TD align="right">42.7%</TD></TR><TR><TD>2023-08</TD><TD>In-Store</TD><TD align="right">$2,875</TD><TD align="right">8.9%</TD></TR><TR><TD>2023-09</TD><TD>Web</TD><TD align="right">$20,319</TD><TD align="right">58.6%</TD></TR><TR><TD>2023-09</TD><TD>Mobile</TD><TD align="right">$8,092</TD><TD align="right">23.4%</TD></TR></TABLE></DIV>
+  <BR>
+  <A href="javascript:toggleSql('06')" id="sqllink06">+ Show the SQL that produced this</A>
+  <DIV id="sql06" style="display:none">
+  <PRE class="code">-- Q6: Sales channel performance, with each channel&#x27;s share of monthly revenue.
+-- Business question: how do Web, Mobile, and In-Store compare, and is the mix
+-- shifting over time?
+-- Technique: aggregate by month and channel, then a windowed ratio-to-total
+-- (SUM OVER a partition) to turn absolute revenue into share-of-month. Shows
+-- partitioned window aggregates for percent-of-total.
+SELECT
+    d.year_month,
+    f.channel,
+    ROUND(SUM(f.net_revenue), 2) AS channel_revenue,
+    ROUND(100.0 * SUM(f.net_revenue)
+                / SUM(SUM(f.net_revenue)) OVER (PARTITION BY d.year_month), 1)
+        AS pct_of_month
+FROM fact_order_items f
+JOIN dim_date d ON f.order_date = d.date
+GROUP BY d.year_month, f.channel
+ORDER BY d.year_month, channel_revenue DESC
+LIMIT 18;</PRE>
+  </DIV>
+</DIV>
+
+<DIV id="q07" class="qblock" style="display:none">
+  <H2 style="margin-top:0px">07. Is growth coming from new customers or repeat customers?</H2>
+  <P><B>What the query does:</B> Each month's revenue split into first-time buyers versus returning ones.</P>
+  <TABLE width="100%" border="0" cellpadding="10" cellspacing="0" class="box"><TR><TD>
+  <B>What it tells you:</B> Early on nearly every dollar came from someone buying for the first time. By late 2024, returning customers make up 50-65% of monthly revenue. That matters: a business that has to find brand-new customers every month to hit its numbers is more fragile than one where people come back on their own.
+  </TD></TR></TABLE>
+  <BR>
+  <B>Result</B> <FONT class="note">(straight from the warehouse, 23 rows)</FONT><BR>
+  <DIV style="overflow-x:auto"><TABLE class="tbl res" cellpadding="4" cellspacing="0"><TR><TH>year_month</TH><TH>new_revenue</TH><TH>returning_revenue</TH><TH>returning_pct</TH></TR><TR><TD>2023-02</TD><TD align="right">$5,141</TD><TD align="right"></TD><TD align="right"></TD></TR><TR><TD>2023-03</TD><TD align="right">$150</TD><TD align="right"></TD><TD align="right"></TD></TR><TR><TD>2023-04</TD><TD align="right">$3,642</TD><TD align="right">$945</TD><TD align="right">20.6%</TD></TR><TR><TD>2023-05</TD><TD align="right">$7,174</TD><TD align="right">$957</TD><TD align="right">11.8%</TD></TR><TR><TD>2023-06</TD><TD align="right">$7,428</TD><TD align="right">$4,885</TD><TD align="right">39.7%</TD></TR><TR><TD>2023-07</TD><TD align="right">$18,787</TD><TD align="right">$2,492</TD><TD align="right">11.7%</TD></TR><TR><TD>2023-08</TD><TD align="right">$28,765</TD><TD align="right">$3,414</TD><TD align="right">10.6%</TD></TR><TR><TD>2023-09</TD><TD align="right">$25,377</TD><TD align="right">$9,276</TD><TD align="right">26.8%</TD></TR><TR><TD>2023-10</TD><TD align="right">$31,683</TD><TD align="right">$22,028</TD><TD align="right">41.0%</TD></TR><TR><TD>2023-11</TD><TD align="right">$59,444</TD><TD align="right">$32,619</TD><TD align="right">35.4%</TD></TR><TR><TD>2023-12</TD><TD align="right">$71,784</TD><TD align="right">$51,277</TD><TD align="right">41.7%</TD></TR><TR><TD>2024-01</TD><TD align="right">$32,614</TD><TD align="right">$29,422</TD><TD align="right">47.4%</TD></TR><TR><TD>2024-02</TD><TD align="right">$55,015</TD><TD align="right">$39,232</TD><TD align="right">41.6%</TD></TR><TR><TD>2024-03</TD><TD align="right">$49,562</TD><TD align="right">$54,143</TD><TD align="right">52.2%</TD></TR><TR><TD>2024-04</TD><TD align="right">$85,314</TD><TD align="right">$65,380</TD><TD align="right">43.4%</TD></TR><TR><TD>2024-05</TD><TD align="right">$48,398</TD><TD align="right">$81,723</TD><TD align="right">62.8%</TD></TR><TR><TD>2024-06</TD><TD align="right">$78,828</TD><TD align="right">$74,298</TD><TD align="right">48.5%</TD></TR><TR><TD>2024-07</TD><TD align="right">$70,064</TD><TD align="right">$76,015</TD><TD align="right">52.0%</TD></TR><TR><TD>2024-08</TD><TD align="right">$114,896</TD><TD align="right">$118,044</TD><TD align="right">50.7%</TD></TR><TR><TD>2024-09</TD><TD align="right">$92,772</TD><TD align="right">$138,330</TD><TD align="right">59.9%</TD></TR><TR><TD>2024-10</TD><TD align="right">$152,949</TD><TD align="right">$174,504</TD><TD align="right">53.3%</TD></TR><TR><TD>2024-11</TD><TD align="right">$227,024</TD><TD align="right">$418,158</TD><TD align="right">64.8%</TD></TR><TR><TD>2024-12</TD><TD align="right">$360,484</TD><TD align="right">$462,022</TD><TD align="right">56.2%</TD></TR></TABLE></DIV>
+  <BR>
+  <A href="javascript:toggleSql('07')" id="sqllink07">+ Show the SQL that produced this</A>
+  <DIV id="sql07" style="display:none">
+  <PRE class="code">-- Q7: New vs. returning customer revenue, by month.
+-- Business question: how much of each month&#x27;s revenue comes from brand-new
+-- customers vs. existing ones? A core growth-quality metric - revenue leaning on
+-- constant new acquisition is riskier than revenue from a loyal base.
+-- Technique: determine each customer&#x27;s first-order month, then classify every
+-- order as &#x27;New&#x27; (same month as acquisition) or &#x27;Returning&#x27;, and pivot with
+-- conditional aggregation.
+WITH first_order AS (
+    SELECT customer_id, DATE_TRUNC(&#x27;month&#x27;, MIN(order_date)) AS cohort_month
+    FROM fact_order_items
+    GROUP BY customer_id
+),
+tagged AS (
+    SELECT
+        d.year_month,
+        CASE WHEN DATE_TRUNC(&#x27;month&#x27;, f.order_date) = fo.cohort_month
+             THEN &#x27;New&#x27; ELSE &#x27;Returning&#x27; END AS customer_type,
+        f.net_revenue
+    FROM fact_order_items f
+    JOIN first_order fo ON f.customer_id = fo.customer_id
+    JOIN dim_date d     ON f.order_date = d.date
+)
+SELECT
+    year_month,
+    ROUND(SUM(CASE WHEN customer_type = &#x27;New&#x27;       THEN net_revenue END), 2)
+        AS new_revenue,
+    ROUND(SUM(CASE WHEN customer_type = &#x27;Returning&#x27; THEN net_revenue END), 2)
+        AS returning_revenue,
+    ROUND(100.0 * SUM(CASE WHEN customer_type = &#x27;Returning&#x27; THEN net_revenue END)
+                / NULLIF(SUM(net_revenue), 0), 1)
+        AS returning_pct
+FROM tagged
+GROUP BY year_month
+ORDER BY year_month;</PRE>
+  </DIV>
+</DIV>
+
+<DIV id="q08" class="qblock" style="display:none">
+  <H2 style="margin-top:0px">08. What sells best in each category?</H2>
+  <P><B>What the query does:</B> The three top-earning products inside each of the six categories.</P>
+  <TABLE width="100%" border="0" cellpadding="10" cellspacing="0" class="box"><TR><TD>
+  <B>What it tells you:</B> One product, ELE-0046, made $259,089 on its own - more than the entire Books category ($72,231). The pattern holds everywhere: a handful of products carry each category.
+  </TD></TR></TABLE>
+  <BR>
+  <B>Result</B> <FONT class="note">(straight from the warehouse, 18 rows)</FONT><BR>
+  <DIV style="overflow-x:auto"><TABLE class="tbl res" cellpadding="4" cellspacing="0"><TR><TH>category</TH><TH>rank_in_cat</TH><TH>product_name</TH><TH>revenue</TH><TH>units</TH></TR><TR><TD>Apparel</TD><TD align="right">1</TD><TD>APP-0078</TD><TD align="right">$31,453</TD><TD align="right">236</TD></TR><TR><TD>Apparel</TD><TD align="right">2</TD><TD>APP-0048</TD><TD align="right">$28,281</TD><TD align="right">225</TD></TR><TR><TD>Apparel</TD><TD align="right">3</TD><TD>APP-0005</TD><TD align="right">$26,844</TD><TD align="right">287</TD></TR><TR><TD>Beauty</TD><TD align="right">1</TD><TD>BEA-0060</TD><TD align="right">$20,986</TD><TD align="right">234</TD></TR><TR><TD>Beauty</TD><TD align="right">2</TD><TD>BEA-0034</TD><TD align="right">$19,715</TD><TD align="right">212</TD></TR><TR><TD>Beauty</TD><TD align="right">3</TD><TD>BEA-0079</TD><TD align="right">$17,343</TD><TD align="right">241</TD></TR><TR><TD>Books</TD><TD align="right">1</TD><TD>BOO-0099</TD><TD align="right">$8,460</TD><TD align="right">228</TD></TR><TR><TD>Books</TD><TD align="right">2</TD><TD>BOO-0061</TD><TD align="right">$8,312</TD><TD align="right">227</TD></TR><TR><TD>Books</TD><TD align="right">3</TD><TD>BOO-0051</TD><TD align="right">$8,176</TD><TD align="right">223</TD></TR><TR><TD>Electronics</TD><TD align="right">1</TD><TD>ELE-0046</TD><TD align="right">$259,089</TD><TD align="right">249</TD></TR><TR><TD>Electronics</TD><TD align="right">2</TD><TD>ELE-0098</TD><TD align="right">$178,474</TD><TD align="right">188</TD></TR><TR><TD>Electronics</TD><TD align="right">3</TD><TD>ELE-0039</TD><TD align="right">$164,113</TD><TD align="right">206</TD></TR><TR><TD>Home &amp; Kitchen</TD><TD align="right">1</TD><TD>HOM-0107</TD><TD align="right">$66,072</TD><TD align="right">263</TD></TR><TR><TD>Home &amp; Kitchen</TD><TD align="right">2</TD><TD>HOM-0057</TD><TD align="right">$62,629</TD><TD align="right">247</TD></TR><TR><TD>Home &amp; Kitchen</TD><TD align="right">3</TD><TD>HOM-0008</TD><TD align="right">$60,371</TD><TD align="right">228</TD></TR><TR><TD>Sports &amp; Outdoors</TD><TD align="right">1</TD><TD>SPO-0075</TD><TD align="right">$88,428</TD><TD align="right">259</TD></TR><TR><TD>Sports &amp; Outdoors</TD><TD align="right">2</TD><TD>SPO-0011</TD><TD align="right">$72,961</TD><TD align="right">205</TD></TR><TR><TD>Sports &amp; Outdoors</TD><TD align="right">3</TD><TD>SPO-0116</TD><TD align="right">$57,643</TD><TD align="right">178</TD></TR></TABLE></DIV>
+  <BR>
+  <A href="javascript:toggleSql('08')" id="sqllink08">+ Show the SQL that produced this</A>
+  <DIV id="sql08" style="display:none">
+  <PRE class="code">-- Q8: Top 3 products within each category by revenue.
+-- Business question: what are the best-selling products in each category - the
+-- kind of &quot;top N per group&quot; question dashboards ask constantly?
+-- Technique: RANK() within a PARTITION BY category, then filter to rank &lt;= 3.
+-- The canonical top-N-per-group pattern, which is awkward without window
+-- functions and clean with them.
+WITH product_rev AS (
+    SELECT
+        p.category,
+        p.product_id,
+        p.product_name,
+        ROUND(SUM(f.net_revenue), 2) AS revenue,
+        SUM(f.quantity)              AS units
+    FROM fact_order_items f
+    JOIN dim_product p ON f.product_id = p.product_id
+    GROUP BY p.category, p.product_id, p.product_name
+),
+ranked AS (
+    SELECT *,
+        RANK() OVER (PARTITION BY category ORDER BY revenue DESC) AS rank_in_cat
+    FROM product_rev
+)
+SELECT category, rank_in_cat, product_name, revenue, units
+FROM ranked
+WHERE rank_in_cat &lt;= 3
+ORDER BY category, rank_in_cat;</PRE>
+  </DIV>
+</DIV>
+
+<DIV id="q09" class="qblock" style="display:none">
+  <H2 style="margin-top:0px">09. Which customers should marketing target first?</H2>
+  <P><B>What the query does:</B> Every customer scored 1 to 4 on how recently they bought, how often, and how much - then graded.</P>
+  <TABLE width="100%" border="0" cellpadding="10" cellspacing="0" class="box"><TR><TD>
+  <B>What it tells you:</B> Someone who bought recently, buys often and spends a lot scores 4-4-4 and is a Champion; someone who used to buy a lot but has gone quiet is At risk. All fifteen customers shown are Champions. This is the segmentation scheme a marketing team would actually use to decide who gets which email.
+  </TD></TR></TABLE>
+  <BR>
+  <B>Result</B> <FONT class="note">(straight from the warehouse, 15 rows)</FONT><BR>
+  <DIV style="overflow-x:auto"><TABLE class="tbl res" cellpadding="4" cellspacing="0"><TR><TH>customer_id</TH><TH>recency_days</TH><TH>frequency</TH><TH>monetary</TH><TH>r_score</TH><TH>f_score</TH><TH>m_score</TH><TH>rfm_total</TH><TH>rfm_cell</TH><TH>rfm_segment</TH></TR><TR><TD align="right">732</TD><TD align="right">1</TD><TD align="right">13</TD><TD align="right">$18,430</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">1813</TD><TD align="right">2</TD><TD align="right">12</TD><TD align="right">$18,340</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">191</TD><TD align="right">0</TD><TD align="right">19</TD><TD align="right">$18,285</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">215</TD><TD align="right">0</TD><TD align="right">20</TD><TD align="right">$17,195</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">1338</TD><TD align="right">0</TD><TD align="right">13</TD><TD align="right">$16,558</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">1470</TD><TD align="right">1</TD><TD align="right">12</TD><TD align="right">$16,166</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">722</TD><TD align="right">7</TD><TD align="right">8</TD><TD align="right">$12,250</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">1320</TD><TD align="right">7</TD><TD align="right">11</TD><TD align="right">$12,225</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">1555</TD><TD align="right">13</TD><TD align="right">7</TD><TD align="right">$11,982</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">1562</TD><TD align="right">5</TD><TD align="right">10</TD><TD align="right">$11,530</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">367</TD><TD align="right">9</TD><TD align="right">4</TD><TD align="right">$11,468</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">1758</TD><TD align="right">2</TD><TD align="right">8</TD><TD align="right">$11,377</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">931</TD><TD align="right">3</TD><TD align="right">7</TD><TD align="right">$10,779</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">1095</TD><TD align="right">7</TD><TD align="right">6</TD><TD align="right">$10,729</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR><TR><TD align="right">1027</TD><TD align="right">1</TD><TD align="right">10</TD><TD align="right">$10,418</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">4</TD><TD align="right">12</TD><TD>444</TD><TD>Champions</TD></TR></TABLE></DIV>
+  <BR>
+  <A href="javascript:toggleSql('09')" id="sqllink09">+ Show the SQL that produced this</A>
+  <DIV id="sql09" style="display:none">
+  <PRE class="code">-- Q9: RFM-style customer scoring (Recency, Frequency, Monetary).
+-- Business question: a compact, actionable segmentation - score every customer
+-- on how recently they bought, how often, and how much, then combine into a
+-- single grade marketing can target.
+-- Technique: compute the three raw measures per customer, convert each to a
+-- 1-4 score with NTILE (quartiles), and concatenate. A standard analytics
+-- deliverable that turns raw transactions into a targeting scheme.
+WITH rfm_base AS (
+    SELECT
+        customer_id,
+        DATEDIFF(&#x27;day&#x27;, MAX(order_date),
+                 (SELECT MAX(order_date) FROM fact_order_items)) AS recency_days,
+        COUNT(DISTINCT order_id)      AS frequency,
+        ROUND(SUM(net_revenue), 2)    AS monetary
+    FROM fact_order_items
+    GROUP BY customer_id
+),
+scored AS (
+    SELECT *,
+        -- recency: fewer days = better, so invert the ntile ordering
+        NTILE(4) OVER (ORDER BY recency_days DESC) AS r_score,
+        NTILE(4) OVER (ORDER BY frequency ASC)     AS f_score,
+        NTILE(4) OVER (ORDER BY monetary ASC)      AS m_score
+    FROM rfm_base
+)
+SELECT
+    customer_id,
+    recency_days,
+    frequency,
+    monetary,
+    r_score, f_score, m_score,
+    (r_score + f_score + m_score)                          AS rfm_total,
+    CAST(r_score AS VARCHAR) || CAST(f_score AS VARCHAR)
+        || CAST(m_score AS VARCHAR)                         AS rfm_cell,
+    CASE
+        WHEN r_score &gt;= 3 AND f_score &gt;= 3 AND m_score &gt;= 3 THEN &#x27;Champions&#x27;
+        WHEN r_score &gt;= 3 AND f_score &gt;= 2                  THEN &#x27;Loyal&#x27;
+        WHEN r_score &gt;= 3                                   THEN &#x27;Recent&#x27;
+        WHEN r_score = 1 AND f_score &gt;= 3                   THEN &#x27;At risk&#x27;
+        ELSE &#x27;Needs attention&#x27;
+    END                                                    AS rfm_segment
+FROM scored
+ORDER BY rfm_total DESC, monetary DESC
+LIMIT 15;</PRE>
+  </DIV>
+</DIV>
+
+<DIV id="q10" class="qblock" style="display:none">
+  <H2 style="margin-top:0px">10. Can we trust the data?</H2>
+  <P><B>What the query does:</B> A health check: missing values, broken links between tables, duplicates, and impossible numbers.</P>
+  <TABLE width="100%" border="0" cellpadding="10" cellspacing="0" class="box"><TR><TD>
+  <B>What it tells you:</B> The check found 85 customers with no email address and 8 duplicate accounts. Both problems were deliberately planted in the raw data - so finding exactly 85 and 8 proves the checks work. Everything else came back clean: every order links to a real customer, no negative amounts, no discounts over 100%.
+  </TD></TR></TABLE>
+  <BR>
+  <B>Result</B> <FONT class="note">(straight from the warehouse, 6 rows)</FONT><BR>
+  <DIV style="overflow-x:auto"><TABLE class="tbl res" cellpadding="4" cellspacing="0"><TR><TH>check_name</TH><TH>failing_rows</TH></TR><TR><TD>customers: missing email</TD><TD align="right">85</TD></TR><TR><TD>customers: duplicate email root</TD><TD align="right">8</TD></TR><TR><TD>order_items: discount outside [0,1]</TD><TD align="right">0</TD></TR><TR><TD>order_items: negative net revenue</TD><TD align="right">0</TD></TR><TR><TD>order_items: non-positive quantity</TD><TD align="right">0</TD></TR><TR><TD>orders: fact rows with no matching customer</TD><TD align="right">0</TD></TR></TABLE></DIV>
+  <BR>
+  <A href="javascript:toggleSql('10')" id="sqllink10">+ Show the SQL that produced this</A>
+  <DIV id="sql10" style="display:none">
+  <PRE class="code">-- Q10: Data-quality audit of the warehouse.
+-- Business question (data MANAGEMENT, not analysis): can we trust this data?
+-- A single query that reports the health checks an analytics-engineering team
+-- runs continuously - null rates, orphaned foreign keys, duplicate detection,
+-- and range sanity. Showing this signals data-governance maturity, not just
+-- query skill.
+-- Technique: UNION ALL of independent check subqueries into one tidy report.
+SELECT &#x27;customers: missing email&#x27;            AS check_name,
+       COUNT(*)                              AS failing_rows
+FROM dim_customer WHERE email IS NULL
+UNION ALL
+SELECT &#x27;customers: duplicate email root&#x27;,
+       COUNT(*) - COUNT(DISTINCT REPLACE(email, &#x27;+dup&#x27;, &#x27;&#x27;))
+FROM dim_customer WHERE email IS NOT NULL
+UNION ALL
+SELECT &#x27;orders: fact rows with no matching customer&#x27;,
+       COUNT(*)
+FROM fact_order_items f
+LEFT JOIN dim_customer c ON f.customer_id = c.customer_id
+WHERE c.customer_id IS NULL
+UNION ALL
+SELECT &#x27;order_items: non-positive quantity&#x27;,
+       COUNT(*)
+FROM fact_order_items WHERE quantity &lt;= 0
+UNION ALL
+SELECT &#x27;order_items: negative net revenue&#x27;,
+       COUNT(*)
+FROM fact_order_items WHERE net_revenue &lt; 0
+UNION ALL
+SELECT &#x27;order_items: discount outside [0,1]&#x27;,
+       COUNT(*)
+FROM fact_order_items WHERE discount &lt; 0 OR discount &gt; 1
+ORDER BY failing_rows DESC, check_name;</PRE>
+  </DIV>
+</DIV>
+
+<BR>
+<HR>
+
+<!-- ================= how it works ================= -->
+<A name="how"></A>
+<H2>How it works, in four steps</H2>
+<TABLE width="100%" border="0" cellpadding="6" cellspacing="0">
+<TR valign="top">
+  <TD width="25%">
+    <FONT size="5" color="#006633" face="Georgia"><B>1</B></FONT>
+    <H3>Start with the raw files</H3>
+    <FONT class="note">Four spreadsheets the way a real system would hand them over: 2,008 customers,
+    120 products, about 5,700 orders and 17,000 order lines. Some of it is deliberately messy so the
+    cleaning step has real work to do.</FONT>
+  </TD>
+  <TD width="25%">
+    <FONT size="5" color="#006633" face="Georgia"><B>2</B></FONT>
+    <H3>Clean it once</H3>
+    <FONT class="note">Fix the country names ("  UNITED STATES  " becomes "United States"), read both
+    date formats, compute the money columns. This happens one time when the warehouse is built, so no
+    query ever has to do it again.</FONT>
+  </TD>
+  <TD width="25%">
+    <FONT size="5" color="#006633" face="Georgia"><B>3</B></FONT>
+    <H3>Arrange it as a star</H3>
+    <FONT class="note">One big table of what was sold, surrounded by small lookup tables for who
+    bought it, what it was, and when. Analysts call this a star schema. It makes almost every
+    business question a simple join and a group-by.</FONT>
+  </TD>
+  <TD width="25%">
+    <FONT size="5" color="#006633" face="Georgia"><B>4</B></FONT>
+    <H3>Ask the questions</H3>
+    <FONT class="note">Ten queries, one file each, each one commented with the question it answers
+    and the technique it uses. The results are above. The whole thing rebuilds from scratch with one
+    command.</FONT>
+  </TD>
+</TR>
+</TABLE>
+
+<BR>
+<H3>The star, drawn out</H3>
+<FONT class="note">Red items are links to another table. The centre table has one row per product per order.</FONT>
+<BR><BR>
+<TABLE width="100%" border="0" cellpadding="0" cellspacing="0" class="schema">
+<TR>
+  <TD width="30%"></TD>
+  <TD width="40%" align="center">
+    <TABLE border="0" cellpadding="0" cellspacing="0" width="180"><TR><TD class="t">
+      <DIV class="h">dim_date</DIV>
+      <DIV class="c"><B>date</B></DIV>
+      <DIV class="c">year, month, quarter</DIV>
+      <DIV class="c">year_month, weekday</DIV>
+    </TD></TR></TABLE>
+    <DIV style="width:1px; height:22px; background:#444444; margin:0 auto"></DIV>
+  </TD>
+  <TD width="30%"></TD>
+</TR>
+<TR valign="middle">
+  <TD align="right">
+    <TABLE border="0" cellpadding="0" cellspacing="0" width="180" align="right"><TR><TD class="t">
+      <DIV class="h">dim_customer</DIV>
+      <DIV class="c"><B>customer_id</B></DIV>
+      <DIV class="c">first_name, last_name</DIV>
+      <DIV class="c">email, country</DIV>
+      <DIV class="c">signup_date</DIV>
+    </TD></TR></TABLE>
+  </TD>
+  <TD align="center">
+    <TABLE border="0" cellpadding="0" cellspacing="0" width="100%"><TR>
+      <TD width="14%"><DIV style="height:1px; background:#444444"></DIV></TD>
+      <TD width="72%">
+        <TABLE border="0" cellpadding="0" cellspacing="0" width="100%"><TR><TD class="t">
+          <DIV class="hf">fact_order_items</DIV>
+          <DIV class="c fk">order_id</DIV>
+          <DIV class="c fk">customer_id</DIV>
+          <DIV class="c fk">product_id</DIV>
+          <DIV class="c fk">order_date</DIV>
+          <DIV class="c">quantity, discount</DIV>
+          <DIV class="c">net_revenue, gross_profit</DIV>
+        </TD></TR></TABLE>
+      </TD>
+      <TD width="14%"><DIV style="height:1px; background:#444444"></DIV></TD>
+    </TR></TABLE>
+  </TD>
+  <TD align="left">
+    <TABLE border="0" cellpadding="0" cellspacing="0" width="180"><TR><TD class="t">
+      <DIV class="h">dim_product</DIV>
+      <DIV class="c"><B>product_id</B></DIV>
+      <DIV class="c">product_name</DIV>
+      <DIV class="c">category</DIV>
+      <DIV class="c">unit_price, unit_cost</DIV>
+    </TD></TR></TABLE>
+  </TD>
+</TR>
+</TABLE>
+
+<HR>
+
+<!-- ================= the charts ================= -->
+<H2>The pictures</H2>
+<P>Four of the ten answers, drawn. Made by the same pipeline that builds the warehouse.</P>
+<TABLE width="100%" border="0" cellpadding="6" cellspacing="0">
+<TR valign="top">
+  <TD width="50%"><IMG src="assets/revenue_trend.png" alt="Monthly revenue"><BR>
+    <FONT class="note">Revenue by month. The Nov/Dec spikes are the holidays.</FONT></TD>
+  <TD width="50%"><IMG src="assets/cohort_retention.png" alt="Cohort retention"><BR>
+    <FONT class="note">Of the people who first bought in a given month, the share who came back. Darker is more.</FONT></TD>
+</TR>
+<TR valign="top">
+  <TD><IMG src="assets/category_revenue.png" alt="Revenue by category"><BR>
+    <FONT class="note">Revenue by category, with each one's profit margin.</FONT></TD>
+  <TD><IMG src="assets/channel_mix.png" alt="Channel mix"><BR>
+    <FONT class="note">Where the sales happen: Web, Mobile or In-Store, as a share of each month.</FONT></TD>
+</TR>
+</TABLE>
+
+<HR>
+
+<!-- ================= glossary ================= -->
+<A name="words"></A>
+<H2>Words used here</H2>
+<TABLE class="tbl" width="100%" cellpadding="5" cellspacing="0">
+<TR><TH width="22%">Term</TH><TH>Plain English</TH></TR>
+<TR><TD><B>SQL</B></TD><TD>The language used to ask a database questions. "Show me total sales by month" is one line of it.</TD></TR>
+<TR><TD><B>Warehouse</B></TD><TD>A database arranged for answering questions, rather than for running a shop day to day. Cleaned once, queried many times.</TD></TR>
+<TR><TD><B>Star schema</B></TD><TD>One central table of events (each thing sold) with small lookup tables around it (who, what, when). Named for how it looks when drawn.</TD></TR>
+<TR><TD><B>Fact table</B></TD><TD>The centre of the star. Here, one row per product per order, with the money already worked out.</TD></TR>
+<TR><TD><B>Dimension</B></TD><TD>A lookup table on the edge of the star: customers, products, dates.</TD></TR>
+<TR><TD><B>Cohort</B></TD><TD>A group of customers who all started in the same month. Following cohorts over time shows whether people come back.</TD></TR>
+<TR><TD><B>Retention</B></TD><TD>The share of a cohort still buying some months later.</TD></TR>
+<TR><TD><B>Window function</B></TD><TD>A way of computing something across neighbouring rows - a running total, or "the previous month's number" - without collapsing the rows. Most of the harder queries here use one.</TD></TR>
+<TR><TD><B>RFM</B></TD><TD>Recency, Frequency, Monetary. Scoring customers on how recently, how often and how much they buy. A standard marketing segmentation.</TD></TR>
+<TR><TD><B>Gross margin</B></TD><TD>What is left of a sale after the cost of the item itself, as a share of the sale.</TD></TR>
+<TR><TD><B>DuckDB</B></TD><TD>A small database engine that runs inside a Python script with no server to install. Why the whole project runs with one command.</TD></TR>
+</TABLE>
+
+<HR>
+
+<!-- ================= run it ================= -->
+<H2>Run it yourself</H2>
+<P>Everything rebuilds from scratch - the raw data, the warehouse, the charts, all ten answers - in about a minute:</P>
+<PRE class="code">pip install -r requirements.txt
+python run_all.py</PRE>
+<P class="note">The data is generated, not taken from a real company, so the project can ship with known-correct answers and
+deliberate mess for the cleaning step to fix. The SQL and the design are exactly what they would be against real data.</P>
+<P>
+<A href="https://github.com/donmontilla/analytics-warehouse"><B>Read the code on GitHub</B></A>
+&nbsp;|&nbsp;
+<A href="https://github.com/donmontilla/analytics-warehouse/tree/main/sql">Browse the ten SQL files</A>
+</P>
+
+<HR>
+
+<!-- ================= footer ================= -->
+<P class="note">
+Built by <A href="https://www.linkedin.com/in/donalfonso/">Don Montilla</A>, B.S. Business Economics, UC San Diego.
+Results on this page are copied straight from a run of the warehouse. MIT licensed.
+<BR>Last updated: September 2026.
+</P>
+<BR>
+
+</TD></TR>
+</TABLE>
+
+<SCRIPT language="JavaScript" type="text/javascript">
+<!--
+
+// the ten question ids in order
+var IDS = ["01","02","03","04","05","06","07","08","09","10"];
+
+function $(id) { return document.getElementById(id); }
+
+function showQ(num) {
+  for (var i = 0; i < IDS.length; i++) {
+    var el = $("q" + IDS[i]);
+    if (el) { el.style.display = "none"; }
+  }
+  var target = $("q" + num);
+  if (target) { target.style.display = "block"; }
+  $("picker").value = num;
+  // remember it in the url so a link to one question works
+  if (window.location.hash != "#" + num) { window.location.hash = num; }
+}
+
+function nextQ() {
+  var i = IDS.indexOf($("picker").value);
+  if (i < IDS.length - 1) { showQ(IDS[i+1]); }
+}
+function prevQ() {
+  var i = IDS.indexOf($("picker").value);
+  if (i > 0) { showQ(IDS[i-1]); }
+}
+
+function toggleSql(num) {
+  var box = $("sql" + num);
+  var link = $("sqllink" + num);
+  if (box.style.display == "none") {
+    box.style.display = "block";
+    link.innerHTML = "- Hide the SQL";
+  } else {
+    box.style.display = "none";
+    link.innerHTML = "+ Show the SQL that produced this";
+  }
+}
+
+// on load: open whichever question is in the url, else the first one
+var start = window.location.hash.replace("#", "");
+if (IDS.indexOf(start) == -1) { start = "01"; }
+showQ(start);
+
+// -->
+</SCRIPT>
+
+</BODY>
+</HTML>

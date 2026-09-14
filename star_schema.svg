@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 470" font-family="Verdana, Arial, sans-serif">
+  <defs>
+    <style>
+      .tbl-title { font-weight: 700; fill: #fff; font-size: 14px; }
+      .fact-title-bg { fill: #000080; }
+      .dim-title-bg  { fill: #2874A6; }
+      .tbl-body { fill: #F4F4F4; stroke: #666666; stroke-width: 1; }
+      .col { font-size: 12px; fill: #000000; }
+      .pk  { font-size: 12px; fill: #000000; font-weight: 700; }
+      .fk  { font-size: 12px; fill: #800000; }
+      .rel { stroke: #444444; stroke-width: 1.5; fill: none; }
+      .note { font-size: 11px; fill: #555555; }
+    </style>
+  </defs>
+
+  <text x="410" y="28" text-anchor="middle" font-size="17" font-weight="700" fill="#000080">
+    Retail Analytics Warehouse - Star Schema
+  </text>
+
+  <!-- FACT (center) -->
+  <g>
+    <rect x="310" y="210" width="200" height="150" class="tbl-body"/>
+    <rect x="310" y="210" width="200" height="26" class="fact-title-bg"/>
+    <text x="410" y="228" text-anchor="middle" class="tbl-title">fact_order_items</text>
+    <text x="322" y="253" class="fk">order_id (FK)</text>
+    <text x="322" y="271" class="fk">customer_id (FK)</text>
+    <text x="322" y="289" class="fk">product_id (FK)</text>
+    <text x="322" y="307" class="fk">order_date (FK)</text>
+    <text x="322" y="325" class="col">quantity, discount</text>
+    <text x="322" y="343" class="col">net_revenue, gross_profit</text>
+  </g>
+
+  <!-- DIM customer (left) -->
+  <g>
+    <rect x="40" y="220" width="180" height="130" class="tbl-body"/>
+    <rect x="40" y="220" width="180" height="26" class="dim-title-bg"/>
+    <text x="130" y="238" text-anchor="middle" class="tbl-title">dim_customer</text>
+    <text x="52" y="263" class="pk">customer_id (PK)</text>
+    <text x="52" y="281" class="col">first_name, last_name</text>
+    <text x="52" y="299" class="col">email, country</text>
+    <text x="52" y="317" class="col">signup_date</text>
+    <text x="52" y="335" class="col">signup_month</text>
+  </g>
+
+  <!-- DIM product (right) -->
+  <g>
+    <rect x="600" y="220" width="180" height="130" class="tbl-body"/>
+    <rect x="600" y="220" width="180" height="26" class="dim-title-bg"/>
+    <text x="690" y="238" text-anchor="middle" class="tbl-title">dim_product</text>
+    <text x="612" y="263" class="pk">product_id (PK)</text>
+    <text x="612" y="281" class="col">product_name</text>
+    <text x="612" y="299" class="col">category</text>
+    <text x="612" y="317" class="col">unit_price, unit_cost</text>
+    <text x="612" y="335" class="col">unit_margin</text>
+  </g>
+
+  <!-- DIM date (top) -->
+  <g>
+    <rect x="320" y="70" width="180" height="110" class="tbl-body"/>
+    <rect x="320" y="70" width="180" height="26" class="dim-title-bg"/>
+    <text x="410" y="88" text-anchor="middle" class="tbl-title">dim_date</text>
+    <text x="332" y="113" class="pk">date (PK)</text>
+    <text x="332" y="131" class="col">year, month, quarter</text>
+    <text x="332" y="149" class="col">year_month, weekday</text>
+    <text x="332" y="167" class="col">month_start</text>
+  </g>
+
+  <!-- relationships -->
+  <path class="rel" d="M 220 285 L 310 285"/>
+  <path class="rel" d="M 510 285 L 600 285"/>
+  <path class="rel" d="M 410 180 L 410 210"/>
+
+  <text x="410" y="405" text-anchor="middle" class="note">
+    One fact table at transaction grain (one row per product per order),
+  </text>
+  <text x="410" y="423" text-anchor="middle" class="note">
+    surrounded by dimension tables. Joins are on clean keys -
+  </text>
+  <text x="410" y="441" text-anchor="middle" class="note">
+    no ad-hoc date parsing or string cleaning at query time.
+  </text>
+</svg>

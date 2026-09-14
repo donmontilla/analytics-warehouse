@@ -1,56 +1,107 @@
-# Retail Analytics Warehouse - SQL from Raw Data to Business Answers
+# Retail Analytics Warehouse
+
+**A store has four messy spreadsheets. What can they actually tell you?**
+
+This project takes two years of raw retail data - customers, products, orders, order lines - cleans it, organizes it into a proper analytics database, and answers ten questions a store manager would actually ask. All in SQL, all runnable with one command.
+
+**[See the answers →](https://donmontilla.github.io/analytics-warehouse/)** - pick a question, read the result in plain English, then open the query behind it. No code needed.
 
 ![SQL](https://img.shields.io/badge/SQL-DuckDB-yellow)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
-An end-to-end analytics project: generate a realistic multi-table retail dataset, **clean it**, model it into a **star schema**, and answer ten business questions in **pure SQL** - cohort retention, customer lifetime value, RFM segmentation, channel mix, revenue trends, and a data-quality audit. Built on **DuckDB** so the entire thing runs with zero database setup - clone it, run one command, and every query executes against a real warehouse.
+![Interactive page](assets/interactive_page.png)
 
-The focus is the two skills analytics and data-management interviews actually screen for: **writing non-trivial SQL** (window functions, cohort logic, ranked partitions) and **modeling messy operational data into a clean, queryable structure**.
+---
+
+## The one-minute version
+
+Raw business data is never clean. Dates get typed two different ways. Country names show up as `  UNITED STATES  ` and `united states` in the same column. Some customers have no email; a few exist twice. Before anyone can ask "how are sales doing?", somebody has to fix all that - and if it gets fixed inside every query, it gets fixed wrong somewhere.
+
+So this project does it the way an analytics team would:
+
+1. **Load the four raw files** as they are, mess included.
+2. **Clean them once**, at build time - normalize the text, parse both date formats, compute the money columns.
+3. **Arrange the result as a star**: one big table of what was sold, surrounded by small lookup tables for who bought it, what it was, and when. This shape makes nearly every business question a simple join and a group-by.
+4. **Ask ten questions** in SQL, one file each, and check the answers.
+
+| The question | What it comes back with |
+|---|---|
+| How is revenue trending? | ~$5K/month in early 2023 to ~$820K/month by Dec 2024, with clear holiday spikes |
+| Which categories make the money? | Electronics: $1.86M, over half the total, at a 41% margin |
+| Who are the best customers? | Top buyer spent $21,690 across 9 orders |
+| Do customers come back? | Of Sept 2023's first-time buyers, 34% had returned by month 3 |
+| What does one loyal customer look like? | 20 orders in ten months; gaps from 2 to 41 days |
+| Which sales channel matters? | Web about half, Mobile a third, In-Store the rest |
+| New customers or repeat? | By late 2024, returning customers are 50-65% of revenue |
+| What sells best per category? | One electronics item outsold the entire Books category |
+| Who should marketing target? | Every customer scored on recency, frequency, and spend |
+| Can we trust the data? | Found exactly the 85 missing emails and 8 duplicates that were planted |
+
+## What the analysis found
+
+![Revenue trend](assets/revenue_trend.png)
+
+Revenue grew from a few thousand dollars a month to over $800K, with pronounced November and December spikes each year.
+
+![Cohort retention](assets/cohort_retention.png)
+
+Retention follows the classic retail shape: most people buy once, a loyal minority keeps coming back. By month 3, roughly 15-30% of each starting group has returned.
+
+![Category revenue](assets/category_revenue.png)
+
+Electronics drives more than half of revenue and keeps 41 cents of every dollar as gross profit, second only to Sports & Outdoors at 42. Apparel sells the most units but earns a sixth as much.
+
+![Channel mix](assets/channel_mix.png)
+
+Once volume is real, Web takes roughly half of each month, Mobile a quarter to 40%, In-Store the remaining 10-15%.
+
+## Run it yourself
 
 ```bash
 pip install -r requirements.txt
-python run_all.py          # generates data, builds the warehouse, runs every query
+python run_all.py
 ```
 
-## The data model
+That regenerates the raw data, builds the warehouse, renders the charts, and prints all ten results. About a minute. There's no database server to install - DuckDB runs inside the script.
 
-Four raw operational tables (`customers`, `products`, `orders`, `order_items`) are cleaned and modeled into a star schema: one **fact table** at transaction grain surrounded by **conformed dimensions**. Analysts query this shape constantly because it makes time-based grouping, segmentation, and joins trivial - the date parsing and string cleaning happen *once*, at build time, not in every query.
+To run one piece at a time:
+
+```bash
+python scripts/build_warehouse.py       # rebuild just the database
+python scripts/run_queries.py           # run all queries, pretty-printed
+python scripts/run_queries.py 04        # run just the cohort-retention query
+python scripts/run_queries.py --markdown   # emit Markdown tables
+```
+
+## The data model (for technical readers)
+
+Four raw operational tables (`customers`, `products`, `orders`, `order_items`) are cleaned and modeled into a star schema: one fact table at transaction grain surrounded by conformed dimensions.
 
 ![Star schema](assets/star_schema.svg)
 
 The build step (`scripts/build_warehouse.py`) does real cleaning along the way:
-- **Inconsistent country values** (`  UNITED STATES  `, `united states`) → normalized to clean Title Case.
-- **Mixed date formats** - order dates arrive as both `YYYY-MM-DD` and `MM/DD/YYYY`; both are parsed via coalesced `TRY_STRPTIME` (0 unparseable after cleaning).
+- **Inconsistent country values** normalized to Title Case (DuckDB has no `INITCAP`, so it's built from `string_split` and `list_transform`).
+- **Mixed date formats** - `YYYY-MM-DD` and `MM/DD/YYYY` both parsed via coalesced `TRY_STRPTIME`; 0 unparseable after cleaning.
 - **A pre-computed date dimension** so no query re-parses dates.
 - **Money columns** (`net_revenue`, `gross_profit`) computed once in the fact table.
 
-## What the analysis found
+## The ten queries and what each demonstrates
 
-A few headline results from the ten queries (full tables below, all reproducible):
+Each lives in `sql/` as a standalone, commented file.
 
-- **Revenue grew from ~$5K/month to ~$820K/month** over two years, with pronounced **Nov/Dec seasonal spikes** - the holiday bump is clearly visible.
-- **Electronics drives revenue** ($1.86M, ~53% of total) **and** carries the best gross margin (~41%), so it's both the biggest and one of the most profitable categories - not always the case.
-- **Returning customers make up ~50–65% of monthly revenue** in the mature months, a sign the business isn't running purely on new-customer acquisition.
-- **Cohort retention decays to ~15–30% by month 3** - typical for retail, and the kind of curve that anchors any retention conversation.
+1. **Monthly revenue with MoM growth** - `LAG()` over an ordered monthly aggregate.
+2. **Revenue and margin by category** - dimensional slice plus a margin ratio.
+3. **Top customers by lifetime value** - per-customer rollup, `CASE` segmentation, `RANK()`.
+4. **Cohort retention** *(flagship)* - first-purchase cohorting, month-offset date differencing, conditional-aggregation pivot. Hand-verified against the raw records.
+5. **Per-customer purchase sequence** - partitioned running `SUM` and `LAG` on date.
+6. **Channel mix over time** - windowed ratio-to-total, `SUM() OVER (PARTITION BY month)`.
+7. **New vs. returning revenue** - first-order tagging plus conditional aggregation.
+8. **Top 3 products per category** - `RANK() OVER (PARTITION BY category)` then filter.
+9. **RFM segmentation** - recency/frequency/monetary quartiles via `NTILE`, combined into a grade.
+10. **Data-quality audit** - a `UNION ALL` health report: nulls, orphaned keys, duplicates, range checks.
 
-![Revenue trend](assets/revenue_trend.png)
-
-![Cohort retention](assets/cohort_retention.png)
-
-![Category revenue](assets/category_revenue.png)
-
-![Channel mix](assets/channel_mix.png)
-
-## The ten business questions
-
-Each lives in `sql/` as a standalone, commented query. Question → what it demonstrates → result.
-
-### 1. Monthly revenue with month-over-month growth
-*Window functions (`LAG`) over an ordered monthly aggregate.* Tracks the revenue trend and flags which months accelerated or slipped.
-
-### 2. Revenue and margin by category
-*Dimensional slice + margin ratio.* Separates "big" categories from "profitable" ones - revenue and margin aren't the same thing.
+Sample results, straight from the warehouse:
 
 | category | orders | units | net_revenue | gross_profit | margin_pct |
 |:--|--:|--:|--:|--:|--:|
@@ -61,12 +112,6 @@ Each lives in `sql/` as a standalone, commented query. Question → what it demo
 | Beauty | 612 | 1617 | 74,530 | 26,574 | 35.7 |
 | Books | 1107 | 3128 | 72,231 | 27,061 | 37.5 |
 
-### 3. Top customers by lifetime value
-*Per-customer rollup + `CASE` segmentation + `RANK`.* Identifies the most valuable customers and how concentrated revenue is.
-
-### 4. Cohort retention *(the flagship query)*
-*First-purchase cohorting, month-offset date differencing, and a conditional-aggregation pivot.* Of the customers who first ordered in a given month, what share returned 1/2/3 months later? This is the query that most separates real analysts from beginners - and the math is **verified by hand** against the raw data in the build notes.
-
 | cohort_month | size | M0 | M1 | M2 | M3 |
 |:--|--:|--:|--:|--:|--:|
 | 2023-07 | 23 | 100% | 13% | 13% | 17% |
@@ -75,24 +120,6 @@ Each lives in `sql/` as a standalone, commented query. Question → what it demo
 | 2023-10 | 40 | 100% | 15% | 18% | 10% |
 | 2023-11 | 40 | 100% | 23% | 13% | 13% |
 | 2023-12 | 68 | 100% | 7% | 10% | 15% |
-
-### 5. Per-customer purchase sequence
-*Partitioned window functions: running `SUM` for cumulative spend, `LAG` on date for the gap between orders.* The canonical window-function showcase, applied to one repeat customer's full order history.
-
-### 6. Channel mix over time
-*Windowed ratio-to-total (`SUM() OVER (PARTITION BY month)`).* Turns absolute channel revenue into share-of-month to reveal whether the Web/Mobile/In-Store mix is shifting.
-
-### 7. New vs. returning revenue
-*First-order tagging + conditional aggregation.* Splits each month's revenue into new-customer vs. returning - a core growth-quality metric.
-
-### 8. Top 3 products per category
-*`RANK() OVER (PARTITION BY category)` then filter.* The "top-N-per-group" pattern that's awkward without window functions and clean with them.
-
-### 9. RFM segmentation
-*Recency/Frequency/Monetary scored into quartiles with `NTILE`, combined into a targetable grade.* Turns raw transactions into a marketing segmentation scheme (Champions, Loyal, At-risk…).
-
-### 10. Data-quality audit *(the data-management piece)*
-*A single `UNION ALL` health report: null rates, orphaned foreign keys, duplicate detection, range checks.* Signals data-governance maturity - the checks an analytics-engineering team runs continuously. It correctly catches the 85 missing emails and 8 duplicate customers intentionally seeded into the raw data.
 
 | check_name | failing_rows |
 |:--|--:|
@@ -103,10 +130,27 @@ Each lives in `sql/` as a standalone, commented query. Question → what it demo
 | order_items: negative net revenue | 0 |
 | order_items: discount outside [0,1] | 0 |
 
+## Words used here
+
+| Term | Plain English |
+|---|---|
+| Warehouse | A database arranged for answering questions rather than running a shop day to day. Cleaned once, queried many times |
+| Star schema | One central table of events with small lookup tables around it. Named for how it looks when drawn |
+| Fact table | The centre of the star - here, one row per product per order, money already worked out |
+| Dimension | A lookup table on the edge of the star: customers, products, dates |
+| Cohort | A group of customers who all started in the same month |
+| Window function | Computing something across neighbouring rows - a running total, the previous month's number - without collapsing them |
+| RFM | Recency, Frequency, Monetary. Scoring customers on how recently, how often, and how much they buy |
+
+## Honest scope
+
+The dataset is **synthetically generated**, not scraped from a real company. That's deliberate: it lets the project ship with a reproducible dataset that has known-correct answers (so the cohort math can be verified) and controlled data-quality problems (so the cleaning and audit steps have something real to do). The generator builds in believable structure - acquisition that ramps over time, seasonality, heavy-tailed purchase frequency, category price bands. The SQL, the schema design, and the analyses are exactly what they'd be against real data; only the source is synthetic. Swapping in a real dataset would mean rewriting the loader and leaving the `sql/` files essentially unchanged.
+
 ## Repository structure
 
 ```
 .
+├── index.html                  # the plain-English explainer (GitHub Pages)
 ├── run_all.py                  # one command: data -> warehouse -> charts -> queries
 ├── scripts/
 │   ├── generate_data.py        # synthetic raw data (deterministic, with real dirtiness)
@@ -114,30 +158,12 @@ Each lives in `sql/` as a standalone, commented query. Question → what it demo
 │   ├── run_queries.py          # execute every sql/ file; --markdown for report tables
 │   └── make_charts.py          # render the assets/*.png charts
 ├── sql/                        # the ten business-question queries, one file each
-│   ├── 01_monthly_revenue_growth.sql
-│   ├── ...
-│   └── 10_data_quality_audit.sql
-├── data/                       # generated raw CSVs (created by run_all.py)
-├── assets/                     # schema diagram + charts
+├── data/                       # raw CSVs (regenerated by run_all.py)
+├── assets/                     # schema diagram, charts, page screenshot
 ├── requirements.txt
 ├── LICENSE
 └── README.md
 ```
-
-## Running individual pieces
-
-```bash
-python scripts/build_warehouse.py     # rebuild just the database
-python scripts/run_queries.py         # run all queries, pretty-printed
-python scripts/run_queries.py 04      # run just the cohort-retention query
-python scripts/run_queries.py --markdown   # emit Markdown tables
-```
-
-You can also open `warehouse.duckdb` in any DuckDB client and run the `sql/` files directly.
-
-## Notes and honest scope
-
-The dataset is **synthetically generated**, not scraped from a real company - this is deliberate: it lets the project ship with a reproducible, shareable dataset that has known-correct answers (so the cohort math can be verified) and controlled data-quality issues (so the cleaning and audit steps have something real to do). The generation logic builds in believable structure - time-varying acquisition, seasonality, heavy-tailed purchase frequency, category price bands - rather than uniform noise. The SQL techniques, schema design, and analyses are exactly what they'd be against real data; only the source is synthetic. Swapping in a real dataset (e.g., the UCI Online Retail set) would mean rewriting the loader in `build_warehouse.py` and leaving the `sql/` queries essentially unchanged.
 
 ## Development notes
 
